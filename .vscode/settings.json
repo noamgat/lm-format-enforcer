@@ -1,0 +1,7 @@
+{
+    "python.testing.pytestEnabled": true,
+    "python.testing.pytestArgs": [
+        "tests"
+    ],
+    "mypy.runUsingActiveInterpreter": true,
+}

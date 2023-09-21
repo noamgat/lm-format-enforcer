@@ -1,0 +1,78 @@
+exclude: "docs/"
+
+repos:
+  - repo: https://github.com/floatingpurr/sync_with_poetry
+    rev: 1.1.0
+    hooks:
+      - id: sync_with_poetry
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      - id: check-yaml
+      - id: check-toml
+      - id: debug-statements
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+  - repo: https://github.com/PyCQA/isort
+    rev: 5.12.0
+    hooks:
+      - id: isort
+        args: ["--profile", "black"]
+  - repo: https://github.com/psf/black
+    rev: 23.7.0
+    hooks:
+      - id: black
+        language_version: python3
+  - repo: https://github.com/asottile/pyupgrade
+    rev: v3.10.1
+    hooks:
+      - id: pyupgrade
+        args: [--py37-plus]
+  - repo: https://github.com/pycqa/flake8
+    rev: 6.1.0
+    hooks:
+      - id: flake8
+  - repo: https://github.com/python-poetry/poetry
+    rev: 1.6.1
+    hooks:
+      - id: poetry-export
+        files: pyproject.toml
+      - id: poetry-lock
+        files: pyproject.toml
+      - id: poetry-check
+        files: pyproject.toml
+  - repo: https://github.com/pre-commit/pre-commit
+    rev: v3.3.3
+    hooks:
+      - id: validate_manifest
+  - repo: https://github.com/tox-dev/tox-ini-fmt
+    rev: 1.3.1
+    hooks:
+      - id: tox-ini-fmt
+        args: ["-p", "type"]
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.16.1
+    hooks:
+      - id: gitleaks
+  - repo: local
+    hooks:
+      - id: print_statement
+        name: Check that print statement isnt in source code
+        types: [python]
+        entry: "print"
+        language: pygrep
+      - id: liccheck
+        name: Run Python License Checker
+        description: Check license compliance of python requirements
+        entry: poetry
+        args: [run, liccheck, --level, paranoid]
+        language: system
+        files: ^(.*requirements.*\.txt|setup\.cfg|setup\.py|pyproject\.toml|liccheck\.ini)$
+        pass_filenames: false
+      - id: tox
+        name: Run tests with tox
+        description: Run tox to check that all tests pass
+        entry: poetry run tox -p
+        language: system
+        files: ^(.*\.py)$
+        pass_filenames: false
