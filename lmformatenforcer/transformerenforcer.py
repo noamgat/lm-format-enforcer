@@ -1,7 +1,7 @@
 from typing import List, Tuple
 from transformers import AutoModelForCausalLM
 
-from characterlevelparser import CharacterLevelParser
+from .characterlevelparser import CharacterLevelParser
 from transformers.generation.logits_process import LogitsWarper, PrefixConstrainedLogitsProcessor
 from transformers.tokenization_utils import PreTrainedTokenizerBase
 

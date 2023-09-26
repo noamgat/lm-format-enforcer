@@ -1,6 +1,6 @@
 from typing import Optional, Set
-from characterlevelparser import CharacterLevelParser
-from external import regex
+from .characterlevelparser import CharacterLevelParser
+from .external import regex
 
 class SequentialPattern:
     REPLACEMENT_DICT = {

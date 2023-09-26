@@ -1,6 +1,6 @@
 from typing import Dict, List
 from pydantic import BaseModel
-from jsonschemaparser import JsonSchemaParser
+from lmformatenforcer.jsonschemaparser import JsonSchemaParser
 from .common import assert_parser_with_string
 
 

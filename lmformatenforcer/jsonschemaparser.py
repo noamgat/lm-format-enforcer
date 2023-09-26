@@ -1,9 +1,9 @@
 from copy import deepcopy
 from typing import Any, List, Union
 
-from external.jsonschemaobject import JsonSchemaObject
+from .external.jsonschemaobject import JsonSchemaObject
 
-from characterlevelparser import CharacterLevelParser
+from .characterlevelparser import CharacterLevelParser
 
 
 class JsonSchemaParser(CharacterLevelParser):
@@ -77,7 +77,14 @@ def get_parser(
         return ObjectParsingState(value_schema, parsing_state)
     elif value_schema.type == None and value_schema.ref:
         value_class_name = value_schema.ref.split('/')[-1]
-        class_dict = parsing_state.model_class.extras['definitions'][value_class_name]
+        extras = parsing_state.model_class.extras
+        if 'definitions' in extras:
+            definitions = extras['definitions']
+        elif '$defs' in extras:
+            definitions = extras['$defs']
+        else:
+            raise ValueError("No definitions found in schema")
+        class_dict = definitions[value_class_name]
         value_schema = JsonSchemaObject(**class_dict)
         return ObjectParsingState(value_schema, parsing_state)
     elif value_schema.type == "integer":

@@ -1,9 +1,8 @@
 from typing import Dict, List, Union
-import torch
-from characterlevelparser import CharacterLevelParser
-from jsonschemaparser import JsonSchemaParser
+from .characterlevelparser import CharacterLevelParser
+from .jsonschemaparser import JsonSchemaParser
 from transformers.tokenization_utils import PreTrainedTokenizerBase
-from datamodel_code_generator.parser.jsonschema import JsonSchemaObject
+from .external.jsonschemaobject import JsonSchemaObject
 
 from tokenizerprefixtree import TokenizerPrefixTree, TokenizerPrefixTreeNode
 
@@ -21,7 +20,7 @@ class TokenEnforcer:
         decoded = self.tokenizer.decode([self.token_0, token])[1:]
         return decoded
 
-    def filter_allowed_tokens(self, batch_id: int, sent: torch.Tensor) -> List[int]:
+    def filter_allowed_tokens(self, batch_id: int, sent) -> List[int]:
         self._apply_new_characters(sent)
         allowed_tokens: List[int] = []
         self._collect_allowed_tokens(self.parser, self.tokenizer_tree.root, allowed_tokens)

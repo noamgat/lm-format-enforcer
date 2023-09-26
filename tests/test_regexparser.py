@@ -1,4 +1,4 @@
-from regexparser import RegexParser
+from lmformatenforcer.regexparser import RegexParser
 from .common import assert_parser_with_string
 
 def _test_regex_parsing_with_string(string: str, regex: str, expect_success: bool):
