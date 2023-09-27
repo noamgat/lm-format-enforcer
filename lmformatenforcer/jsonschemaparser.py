@@ -86,8 +86,16 @@ def get_parser(
             raise ValueError("No definitions found in schema")
         class_dict = definitions[value_class_name]
         value_schema = JsonSchemaObject(**class_dict)
-        return ObjectParsingState(value_schema, parsing_state)
+        return get_parser(parsing_state, value_schema, ending_characters)
     elif value_schema.type == "integer":
+        if value_schema.enum:
+            return StringParsingState(
+                parsing_state,
+                ending_characters,
+                [str(i) for i in value_schema.enum],
+                require_opening_quote=False,
+                require_closing_quote=False,
+            )
         return NumberParsingState(parsing_state, ending_characters, False)
     elif value_schema.type == "number":
         return NumberParsingState(parsing_state, ending_characters, True)
@@ -274,7 +282,7 @@ class NumberParsingState(PrimitiveParsingState):
         return allowed_characters
 
     def can_end(self) -> bool:
-        return self.parsed_string and self.parsed_string[-1] in "0123456789"
+        return bool(self.parsed_string) and self.parsed_string[-1] in "0123456789"
 
 
 class StringParsingState(PrimitiveParsingState):
@@ -289,11 +297,13 @@ class StringParsingState(PrimitiveParsingState):
         ending_characters: str,
         allowed_strings: List[str],
         require_opening_quote: bool,
+        require_closing_quote: bool = True,
     ):
         super().__init__(root, ending_characters)
         self.allowed_strings = allowed_strings
         self.seen_closing_quote = False
         self.seen_opening_quote = not require_opening_quote
+        self.require_closing_quote = require_closing_quote
 
     def add_character(self, new_character: str):
         super().add_character(new_character)
@@ -309,7 +319,7 @@ class StringParsingState(PrimitiveParsingState):
         if not self.seen_opening_quote:
             return '"'
         if self.seen_closing_quote:
-            return []
+            return ''
         if self.allowed_strings:
             legal_indices: List[int] = []
             allowed_continuations = [
@@ -321,12 +331,18 @@ class StringParsingState(PrimitiveParsingState):
             allowed_next_characters = list(set(allowed_next_characters))
             if self.parsed_string in self.allowed_strings:
                 allowed_next_characters.append('"')
-            return allowed_next_characters
+            return "".join(allowed_next_characters)
         else:
             return "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!@#$%^&*()_+-=[]{};:,./<>? '\""
 
     def can_end(self) -> bool:
-        return self.seen_closing_quote
+        if self.require_closing_quote:
+            return self.seen_closing_quote
+        else:
+            if self.allowed_strings:
+                return self.parsed_string in self.allowed_strings
+            else:
+                return bool(self.parsed_string)
 
 
 class ListParsingState(PrimitiveParsingState):

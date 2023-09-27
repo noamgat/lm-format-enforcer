@@ -1,6 +1,8 @@
 from typing import Dict, List
 from pydantic import BaseModel
 from lmformatenforcer.jsonschemaparser import JsonSchemaParser
+from enum import Enum
+ 
 from .common import assert_parser_with_string
 
 
@@ -11,6 +13,17 @@ def _test_json_schema_parsing_with_string(string: str, schema_dict: dict, expect
 class InnerModel(BaseModel):
     list_of_ints: List[int]
 
+class IntegerEnum(Enum):
+    ONE = 1
+    TWO = 2
+    THREE = 3
+    FOUR = 4
+
+class StringEnum(Enum):
+    ONE = "One"
+    TWO = "Two"
+    THREE = "Three"
+    FOUR = "Four"
 
 class SampleModel(BaseModel):
     num: int
@@ -20,6 +33,8 @@ class SampleModel(BaseModel):
     inner_dict: Dict[str, InnerModel]
     simple_dict: Dict[str, int]
     list_of_models: List[InnerModel]
+    enum: IntegerEnum
+    enum_dict: Dict[str, StringEnum]
 
 
 def test_parsing_test_model():
@@ -46,3 +61,19 @@ def test_list_of_objects():
 def test_simple_dict():
     test_string = '{"simple_dict":{"a":1,"b":2,"c":3}}'
     _test_json_schema_parsing_with_string(test_string, SampleModel.schema(), True)
+
+def test_int_enum():
+    test_string = '{"enum":4}'
+    _test_json_schema_parsing_with_string(test_string, SampleModel.schema(), True)
+
+def test_invalid_int_enum_value():
+    test_string = '{"enum":5}'
+    _test_json_schema_parsing_with_string(test_string, SampleModel.schema(), False)
+
+def test_str_enum():
+    test_string = '{"enum_dict":{"a":"One","b":"Two","c":"Three","d":"Four"}}'
+    _test_json_schema_parsing_with_string(test_string, SampleModel.schema(), True)
+
+def test_invalid_str_enum_value():
+    test_string = '{"enum_dict":{"a":"Onee"}}'
+    _test_json_schema_parsing_with_string(test_string, SampleModel.schema(), False)
