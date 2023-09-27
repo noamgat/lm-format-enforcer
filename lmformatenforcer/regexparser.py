@@ -4,7 +4,7 @@ from .external import regex
 
 class SequentialPattern:
     REPLACEMENT_DICT = {
-        "\d" : "(0|1|2|3|4|5|6|7|8|9)"
+        "\\d" : "(0|1|2|3|4|5|6|7|8|9)"
     }
     def __init__(self, pattern: str, compiled_pattern = None, current_states: Optional[set] = None):
         if not compiled_pattern:
