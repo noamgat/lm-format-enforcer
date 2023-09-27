@@ -35,3 +35,11 @@ result = generate_enforced(model, tokenizer, parser, inputs=inputs)
 print(result)
 # {'first_name': 'Michael', 'last_name': 'Jordan', 'year_of_birth': 1963, 'num_seasons_in_nba': 15}
 ```
+
+## How does it work?
+
+The library works by combining a character level parser and a tokenizer prefix tree into a smart token filtering mechanism.
+
+### Character Level Parser
+
+A character level parser is a tree-like interface that parses a certain format character by character, and can also return the allowed next characters at any given moment.

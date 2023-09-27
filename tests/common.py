@@ -1,4 +1,4 @@
-from lmformatenforcer.characterlevelparser import CharacterLevelParser
+from lmformatenforcer import CharacterLevelParser
 
 
 def assert_parser_with_string(string: str, parser: CharacterLevelParser, expect_success: bool):
