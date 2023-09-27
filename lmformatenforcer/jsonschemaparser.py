@@ -78,6 +78,7 @@ def get_parser(
     elif value_schema.type == None and value_schema.ref:
         value_class_name = value_schema.ref.split('/')[-1]
         extras = parsing_state.model_class.extras
+        # Pydantic V1 and V2 have different names for the definitions field
         if 'definitions' in extras:
             definitions = extras['definitions']
         elif '$defs' in extras:
