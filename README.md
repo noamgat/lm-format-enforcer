@@ -19,15 +19,11 @@ class AnswerFormat(BaseModel):
     year_of_birth: int
     num_seasons_in_nba: int
 
-question = 'Please give me information about Michael Jordan. You MUST answer using the following json schema: '
-question_with_schema = f'{question}{AnswerFormat.schema_json()}'
-inputs = tokenizer([question_with_schema], return_tensors='pt', add_special_tokens=False, return_token_type_ids=False).to(device)
-
+question = f'Please give me information about Michael Jordan. You MUST answer using the following json schema: {AnswerFormat.schema_json()}'
 parser = JsonSchemaParser(AnswerFormat.schema())
 
-# What we would usually call is this:
-# result = model.generate(inputs=inputs, ...)
-# Instead, call this: 
+# Call generate_enforced(model, tokenizer, parser, ...) instead of model.generate(...):
+inputs = tokenizer([question], return_tensors='pt', add_special_tokens=False, return_token_type_ids=False).to(device)
 result = generate_enforced(model, tokenizer, parser, inputs=inputs)
 print(result)
 # {'first_name': 'Michael', 'last_name': 'Jordan', 'year_of_birth': 1963, 'num_seasons_in_nba': 15}
