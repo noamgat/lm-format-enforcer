@@ -10,6 +10,6 @@ from .jsonschemaparser import JsonSchemaParser
 
 try:
     from .transformerenforcer import generate_enforced
-except:
+except Exception as e:
     import logging
-    logging.warning("Could not import transformers. Transformers-based functionality will not be available.")
+    logging.warning(f"Could not import generate_enforced(). Transformers-based functionality will not be available. Details: {e}")

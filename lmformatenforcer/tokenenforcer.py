@@ -4,7 +4,7 @@ from .jsonschemaparser import JsonSchemaParser
 from transformers.tokenization_utils import PreTrainedTokenizerBase
 from .external.jsonschemaobject import JsonSchemaObject
 
-from tokenizerprefixtree import TokenizerPrefixTree, TokenizerPrefixTreeNode
+from .tokenizerprefixtree import TokenizerPrefixTree, TokenizerPrefixTreeNode
 
 
 class TokenEnforcer:
@@ -20,7 +20,7 @@ class TokenEnforcer:
         decoded = self.tokenizer.decode([self.token_0, token])[1:]
         return decoded
 
-    def filter_allowed_tokens(self, batch_id: int, sent) -> List[int]:
+    def filter_allowed_tokens(self, batch_id: int, sent: 'torch.Tensor') -> List[int]:
         self._apply_new_characters(sent)
         allowed_tokens: List[int] = []
         self._collect_allowed_tokens(self.parser, self.tokenizer_tree.root, allowed_tokens)
@@ -41,7 +41,7 @@ class TokenEnforcer:
             self._collect_allowed_tokens(next_parser, next_tree_node, allowed_tokens)
             
     
-    def _apply_new_characters(self, sent: torch.Tensor):
+    def _apply_new_characters(self, sent: 'torch.Tensor'):
         characters = self.tokenizer.decode(sent)
         if self.str_so_far is not None:
             new_characters = characters[len(self.str_so_far):]
