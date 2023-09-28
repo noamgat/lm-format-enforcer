@@ -33,7 +33,7 @@ class StringParser(CharacterLevelParser):
             raise ValueError(f"Expected '{self.target_str[0]}' but got '{new_character}'")
 
     def get_allowed_characters(self) -> str:
-        return self.target_str[0]
+        return self.target_str[0] if self.target_str else ""
 
     def can_end(self) -> bool:
         return not self.target_str
