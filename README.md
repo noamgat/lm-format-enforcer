@@ -33,6 +33,9 @@ print(result)
 # {'first_name': 'Michael', 'last_name': 'Jordan', 'year_of_birth': 1963, 'num_seasons_in_nba': 15}
 ```
 
+## Full example
+See the [Example Jupyter Notebook](https://github.com/noamgat/lm-format-enforcer/blob/main/samples/llama2_enforcer.ipynb) for a full example of how to use this library to enforce the output format of llama2, including interpreting the intermediate results.
+
 ## How does it work?
 
 The library works by combining a character level parser and a tokenizer prefix tree into a smart token filtering mechanism.
