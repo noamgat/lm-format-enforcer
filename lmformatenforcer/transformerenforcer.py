@@ -8,7 +8,7 @@ from transformers.tokenization_utils import PreTrainedTokenizerBase
 import torch
 import pandas as pd
 
-from tokenenforcer import TokenEnforcer
+from .tokenenforcer import TokenEnforcer
 
 class LogitsSaverWarper(LogitsWarper):
     def __init__(self) -> None:
