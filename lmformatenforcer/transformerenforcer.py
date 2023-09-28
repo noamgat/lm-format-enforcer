@@ -6,7 +6,6 @@ from transformers.generation.logits_process import LogitsWarper, PrefixConstrain
 from transformers.tokenization_utils import PreTrainedTokenizerBase
 
 import torch
-import pandas as pd
 
 from .tokenenforcer import TokenEnforcer
 
@@ -87,14 +86,14 @@ def generate_enforced(model: AutoModelForCausalLM,
 
         leading_tokens, leading_scores = logits_saver.get_leading_scores()
         leading_token_strs = [tokenizer.convert_ids_to_tokens([token], skip_special_tokens=False)[0] for token in leading_tokens]
-        df = pd.DataFrame()
-        df['generated_token'] = single_token_strs
-        df['generated_token_idx'] = generated_tokens
-        df['generated_score'] = generated_scores
-        df['leading_token'] = leading_token_strs
-        df['leading_token_idx'] = leading_tokens
-        df['leading_score'] = leading_scores
-        output.enforced_scores = df
+        df_dict = {}  # In order to minimize the package's dependencies, we don't create a dataframe, but create a dataframe-like dictionary instead.
+        df_dict['generated_token'] = single_token_strs
+        df_dict['generated_token_idx'] = generated_tokens
+        df_dict['generated_score'] = generated_scores
+        df_dict['leading_token'] = leading_token_strs
+        df_dict['leading_token_idx'] = leading_tokens
+        df_dict['leading_score'] = leading_scores
+        output.enforced_scores = df_dict
 
     
     return output
