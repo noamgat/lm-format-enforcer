@@ -30,7 +30,15 @@ print(result)
 ```
 
 ## Detailed example
-See the [Example Jupyter Notebook](https://github.com/noamgat/lm-format-enforcer/blob/main/samples/llama2_enforcer.ipynb) for a full example of how to use this library to enforce the output format of llama2, including interpreting the intermediate results.
+
+We created a Google Colab Notebook which contains a full example of how to use this library to enforce the output format of llama2, including interpreting the intermediate results. The notebook can run on a free GPU-backed runtime in Colab.
+
+<a target="_blank" href="https://colab.research.google.com/github/noamgat/lm-format-enforcer/blob/main/samples/colab_llama2_enforcer.ipynb">
+  <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/>
+</a>
+
+In addition, the same notebook is available for local use via the
+[Example Jupyter Notebook](https://github.com/noamgat/lm-format-enforcer/blob/main/samples/llama2_enforcer.ipynb) 
 
 ## How does it work?
 
