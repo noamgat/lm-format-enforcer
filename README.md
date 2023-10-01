@@ -1,5 +1,5 @@
 # lm-format-enforcer
-Enforce the format of the output of a language model!
+**Enforce the output format (JSON Schema, Regex etc) of a language model**
 
 Language models are able to generate text, but when requiring a precise output format, they do not always perform as instructed.
 Various prompt engineering techniques have been introduced to improve the robustness of the generated text, but they are not always sufficient.
@@ -29,7 +29,7 @@ print(result)
 # {'first_name': 'Michael', 'last_name': 'Jordan', 'year_of_birth': 1963, 'num_seasons_in_nba': 15}
 ```
 
-## Full example
+## Detailed example
 See the [Example Jupyter Notebook](https://github.com/noamgat/lm-format-enforcer/blob/main/samples/llama2_enforcer.ipynb) for a full example of how to use this library to enforce the output format of llama2, including interpreting the intermediate results.
 
 ## How does it work?
