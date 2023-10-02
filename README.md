@@ -36,6 +36,13 @@ result = generate_enforced(model, tokenizer, parser, inputs=inputs)
 print(result)
 # {'first_name': 'Michael', 'last_name': 'Jordan', 'year_of_birth': 1963, 'num_seasons_in_nba': 15}
 ```
+## Capabilities / Advantages
+
+- Works with any language model and tokenizer (currently works with transformers, can be adapted into any python language model framework)
+- Supports both JSON Schema (strong) and Regular Expression (limited) formats
+- Supports both required and optional fields in JSON schemas
+- Supports nested fields, arrays and dictionaries in JSON schemas
+- Gives the language model freedom to control whitespacing and field ordering in JSON schemas, reducing hallucinations
 
 ## Detailed example
 
