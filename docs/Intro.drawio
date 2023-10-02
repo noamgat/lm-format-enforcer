@@ -1,9 +1,51 @@
-<mxfile host="app.diagrams.net" modified="2023-10-02T08:17:39.319Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36 Edg/117.0.2045.36" version="22.0.0" etag="lPCoP2MrCbhhCho00FgD" type="github">
+<mxfile host="app.diagrams.net" modified="2023-10-02T08:35:15.732Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36 Edg/117.0.2045.36" etag="xcEBXJItiCnI5ZmSG9NC" version="22.0.0" type="github">
   <diagram name="Page-1" id="8PsKX4Oc-MI7gZbU_MNd">
-    <mxGraphModel>
+    <mxGraphModel dx="1386" dy="905" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="700" pageHeight="400" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
+        <mxCell id="5MfLdPhbdqmFTjfEvSjL-3" value="&lt;font style=&quot;font-size: 14px;&quot;&gt;&lt;b&gt;JSON Schema /&lt;br&gt;&amp;nbsp;Pydantic Models&lt;/b&gt;&lt;br&gt;&lt;/font&gt;&lt;br&gt;&lt;div style=&quot;text-align: left;&quot;&gt;&lt;span style=&quot;background-color: initial;&quot;&gt;&lt;font color=&quot;#4d4d4d&quot;&gt;class AnswerFormat:&lt;/font&gt;&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;text-align: left;&quot;&gt;&lt;span style=&quot;background-color: initial;&quot;&gt;&lt;font color=&quot;#4d4d4d&quot;&gt;&amp;nbsp; &amp;nbsp; first_name: str&lt;/font&gt;&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;text-align: left;&quot;&gt;&lt;span style=&quot;background-color: initial;&quot;&gt;&lt;font color=&quot;#4d4d4d&quot;&gt;&amp;nbsp; &amp;nbsp; last_name: str&lt;/font&gt;&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;text-align: left;&quot;&gt;&lt;span style=&quot;background-color: initial;&quot;&gt;&lt;font color=&quot;#4d4d4d&quot;&gt;&amp;nbsp; &amp;nbsp; year_of_birth: int&lt;/font&gt;&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="30" y="84" width="160" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="5MfLdPhbdqmFTjfEvSjL-4" value="&lt;span style=&quot;font-size: 14px;&quot;&gt;&lt;b&gt;Regular Expressions&lt;/b&gt;&lt;/span&gt;&lt;br&gt;&lt;div style=&quot;text-align: left;&quot;&gt;&lt;br&gt;&lt;/div&gt;&lt;div style=&quot;text-align: left;&quot;&gt;&lt;font color=&quot;#4d4d4d&quot;&gt;Dimensions: &lt;br&gt;(\d)+ x (\d)+ mm&lt;br&gt;&lt;br&gt;&lt;/font&gt;&lt;/div&gt;&lt;div style=&quot;text-align: left;&quot;&gt;&lt;font color=&quot;#4d4d4d&quot;&gt;Dates:&amp;nbsp;&lt;/font&gt;&lt;/div&gt;&lt;font color=&quot;#4d4d4d&quot;&gt;([0-9]{2})\\([0-9]{2})\\([0-9]{4})&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="30" y="230" width="160" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="5MfLdPhbdqmFTjfEvSjL-5" value="" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" edge="1" parent="1" source="5MfLdPhbdqmFTjfEvSjL-4">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="320" y="394" as="sourcePoint" />
+            <mxPoint x="280" y="224" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="5MfLdPhbdqmFTjfEvSjL-6" value="" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" edge="1" parent="1" source="5MfLdPhbdqmFTjfEvSjL-3">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="320" y="394" as="sourcePoint" />
+            <mxPoint x="280" y="224" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="5MfLdPhbdqmFTjfEvSjL-7" value="&lt;b&gt;&lt;font style=&quot;font-size: 18px;&quot;&gt;LM Format Enforcer&lt;br&gt;&lt;/font&gt;&lt;/b&gt;+&lt;br&gt;Language Models&lt;br&gt;(transformers etc)" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;" vertex="1" parent="1">
+          <mxGeometry x="281" y="154" width="140" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="5MfLdPhbdqmFTjfEvSjL-9" value="" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="5MfLdPhbdqmFTjfEvSjL-7" target="5MfLdPhbdqmFTjfEvSjL-10">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="320" y="394" as="sourcePoint" />
+            <mxPoint x="520" y="224" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="5MfLdPhbdqmFTjfEvSjL-10" value="&lt;font color=&quot;#4d4d4d&quot;&gt;&lt;br&gt;&amp;nbsp;{ &lt;br&gt;&amp;nbsp; &amp;nbsp;&quot;first_name&quot;: &quot;Michael&quot;, &lt;br&gt;&amp;nbsp; &amp;nbsp;&quot;last_name&quot;: &quot;Jordan&quot;, &lt;br&gt;&amp;nbsp; &amp;nbsp;&quot;year_of_birth&quot;: 1963&lt;br&gt;&amp;nbsp;}&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=left;" vertex="1" parent="1">
+          <mxGeometry x="520" y="94" width="150" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="5MfLdPhbdqmFTjfEvSjL-12" value="" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="5MfLdPhbdqmFTjfEvSjL-7" target="5MfLdPhbdqmFTjfEvSjL-13">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="431" y="234" as="sourcePoint" />
+            <mxPoint x="530" y="164" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="5MfLdPhbdqmFTjfEvSjL-13" value="&lt;font color=&quot;#4d4d4d&quot;&gt;&lt;br&gt;&amp;nbsp; 120 x 80 mm&lt;br&gt;&lt;br&gt;&amp;nbsp; 04/07/1776&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=left;" vertex="1" parent="1">
+          <mxGeometry x="520" y="229" width="150" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="5MfLdPhbdqmFTjfEvSjL-14" value="&lt;b style=&quot;border-color: var(--border-color); color: rgb(0, 0, 0); font-family: Helvetica; font-size: 12px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; letter-spacing: normal; orphans: 2; text-align: center; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; background-color: rgb(251, 251, 251); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial;&quot;&gt;&lt;font style=&quot;border-color: var(--border-color); font-size: 18px;&quot;&gt;LM Format Enforcer - Guaranteed ouptut format compliance with minimal interference on language model freedom&lt;/font&gt;&lt;/b&gt;" style="text;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="30" y="10" width="630" height="50" as="geometry" />
+        </mxCell>
       </root>
     </mxGraphModel>
   </diagram>
