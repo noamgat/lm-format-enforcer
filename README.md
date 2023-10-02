@@ -1,6 +1,10 @@
 # lm-format-enforcer
 **Enforce the output format (JSON Schema, Regex etc) of a language model**
 
+<a target="_blank" href="https://colab.research.google.com/github/noamgat/lm-format-enforcer/blob/main/samples/colab_llama2_enforcer.ipynb">
+  <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/>
+</a>
+
 
 ![Solution at a glance](https://raw.githubusercontent.com/noamgat/lm-format-enforcer/main/docs/Intro.drawio.svg?sanitize=true)
 
@@ -40,9 +44,6 @@ We created a Google Colab Notebook which contains a full example of how to use t
 <a target="_blank" href="https://colab.research.google.com/github/noamgat/lm-format-enforcer/blob/main/samples/colab_llama2_enforcer.ipynb">
   <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/>
 </a>
-
-In addition, the same notebook is available for local use via the
-[Example Jupyter Notebook](https://github.com/noamgat/lm-format-enforcer/blob/main/samples/llama2_enforcer.ipynb) 
 
 ## How does it work?
 
