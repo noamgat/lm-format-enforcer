@@ -159,7 +159,7 @@ class ObjectParsingState(BaseParsingState):
                     possible_keys = list(
                         set(possible_keys).difference(self.existing_keys)
                     )
-                ending_characters = ':'
+                ending_characters = ': '
                 key_parser = StringParsingState(
                     self.root, ending_characters, possible_keys, require_opening_quote=False
                 )
@@ -179,7 +179,7 @@ class ObjectParsingState(BaseParsingState):
                     )
                     value_schema = self.schema_object.properties[self.current_key]
                     can_continue = len(possible_keys) > 0
-                ending_characters = "}"
+                ending_characters = "} "
                 if can_continue:
                     ending_characters += ","
                 self.current_key_parser = get_parser(
@@ -264,7 +264,7 @@ class PrimitiveParsingState(BaseParsingState):
         return allowed_characters
 
     def _get_allowed_primitive_characters(self) -> str:
-        return []
+        return ''
 
     def can_end(self) -> bool:
         return True
@@ -282,6 +282,8 @@ class NumberParsingState(PrimitiveParsingState):
         self.seen_decimal_point = False
 
     def add_character(self, new_character: str):
+        if new_character == " ":
+            return
         super().add_character(new_character)
         if new_character == ".":
             self.seen_decimal_point = True
@@ -289,7 +291,7 @@ class NumberParsingState(PrimitiveParsingState):
     def _get_allowed_primitive_characters(self) -> str:
         allowed_characters = "0123456789"
         if not self.parsed_string:
-            allowed_characters += "-"
+            allowed_characters += "- "
         if self.allow_floating_point and not self.seen_decimal_point:
             allowed_characters += "."
         return allowed_characters

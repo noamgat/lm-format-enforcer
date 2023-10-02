@@ -82,5 +82,13 @@ def test_whitespaces():
     test_string = '{ "message": ""}'
     _test_json_schema_parsing_with_string(test_string, SampleModel.schema(), True)
 
+def test_whitespace_before_number():
+    test_string = '{"num": 1, "dec": 1.1}'
+    _test_json_schema_parsing_with_string(test_string, SampleModel.schema(), True)
+
+def test_whitespace_before_close():
+    test_string = '{"num":1 }'
+    _test_json_schema_parsing_with_string(test_string, SampleModel.schema(), True)    
+
 
     
