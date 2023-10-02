@@ -44,6 +44,8 @@ In addition, the same notebook is available for local use via the
 
 The library works by combining a character level parser and a tokenizer prefix tree into a smart token filtering mechanism.
 
+![An example of the character level parser and tokenizer prefix tree in a certain timestep](https://raw.githubusercontent.com/noamgat/lm-format-enforcer/main/docs/Trees.drawio.svg?sanitize=true)
+
 ### Character Level Parser
 
 Parsing a string into any kind of formatter can be looked at as an implicit tree structure - at any moment in the parsing process, there is a set of allowed next characters, and if any of them are selected, there is a new set of allowed next characters, and so on.
