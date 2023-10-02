@@ -88,8 +88,17 @@ def get_parser(
         class_dict = definitions[value_class_name]
         value_schema = JsonSchemaObject(**class_dict)
         return get_parser(parsing_state, value_schema, ending_characters)
-    elif value_schema.type == "integer":
-        if value_schema.enum:
+    elif value_schema.enum:
+        is_numeric = all(isinstance(i, (int, float)) for i in value_schema.enum)
+        is_string = all(isinstance(i, (str)) for i in value_schema.enum)
+        if is_string:
+            return StringParsingState(
+            parsing_state,
+            ending_characters,
+            value_schema.enum,
+            require_opening_quote=True,
+        )
+        elif is_numeric:
             return StringParsingState(
                 parsing_state,
                 ending_characters,
@@ -97,6 +106,9 @@ def get_parser(
                 require_opening_quote=False,
                 require_closing_quote=False,
             )
+        else:
+            raise Exception("Unsupported enum type " + str(value_schema.enum))
+    elif value_schema.type == "integer":
         return NumberParsingState(parsing_state, ending_characters, False)
     elif value_schema.type == "number":
         return NumberParsingState(parsing_state, ending_characters, True)
@@ -307,6 +319,8 @@ class StringParsingState(PrimitiveParsingState):
         self.require_closing_quote = require_closing_quote
 
     def add_character(self, new_character: str):
+        if not self.seen_opening_quote and new_character == ' ':
+            return
         super().add_character(new_character)
         if new_character == '"':
             if not self.seen_opening_quote:
@@ -318,7 +332,7 @@ class StringParsingState(PrimitiveParsingState):
 
     def _get_allowed_primitive_characters(self) -> str:
         if not self.seen_opening_quote:
-            return '"'
+            return '" '
         if self.seen_closing_quote:
             return ''
         if self.allowed_strings:

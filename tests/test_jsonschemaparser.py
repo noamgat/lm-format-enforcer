@@ -77,3 +77,10 @@ def test_str_enum():
 def test_invalid_str_enum_value():
     test_string = '{"enum_dict":{"a":"Onee"}}'
     _test_json_schema_parsing_with_string(test_string, SampleModel.schema(), False)
+
+def test_whitespaces():
+    test_string = '{ "message": ""}'
+    _test_json_schema_parsing_with_string(test_string, SampleModel.schema(), True)
+
+
+    
