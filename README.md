@@ -1,6 +1,10 @@
 # lm-format-enforcer
 **Enforce the output format (JSON Schema, Regex etc) of a language model**
 
+
+![Solution at a glance](https://raw.githubusercontent.com/noamgat/lm-format-enforcer/main/docs/Intro.drawio.svg?sanitize=true)
+
+
 Language models are able to generate text, but when requiring a precise output format, they do not always perform as instructed.
 Various prompt engineering techniques have been introduced to improve the robustness of the generated text, but they are not always sufficient.
 This project solves the issues by filtering the tokens that the language model is allowed to generate at every timestep, thus ensuring that the output format is respected, while minimizing the limitations on the language model.
