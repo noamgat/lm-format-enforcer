@@ -1,4 +1,4 @@
-<mxfile host="app.diagrams.net" modified="2023-10-02T07:19:26.433Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36 Edg/117.0.2045.36" etag="UCul0WPCK8EXsY64PB5s" version="22.0.0" type="github">
+<mxfile host="app.diagrams.net" modified="2023-10-02T07:20:40.376Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36 Edg/117.0.2045.36" etag="mEotgt_N4rMw5fg7MmSY" version="22.0.0" type="github">
   <diagram name="Page-1" id="xTfdQ4U6YHgr5Ohzd5CC">
     <mxGraphModel dx="1386" dy="905" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="700" pageHeight="800" math="0" shadow="0">
       <root>
@@ -365,7 +365,7 @@
           </mxGeometry>
         </mxCell>
         <mxCell id="SLhTDTClX1HCQNrHHvle-88" value="&lt;font style=&quot;font-size: 18px;&quot;&gt;Allowed Tokens at next timestep: [16, 45, 145, 625, 1299, .....]&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
-          <mxGeometry x="37" y="715" width="613" height="30" as="geometry" />
+          <mxGeometry x="37" y="732" width="613" height="30" as="geometry" />
         </mxCell>
         <mxCell id="SLhTDTClX1HCQNrHHvle-89" value="" style="endArrow=none;dashed=1;html=1;dashPattern=1 3;strokeWidth=2;rounded=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" target="SLhTDTClX1HCQNrHHvle-61">
           <mxGeometry width="50" height="50" relative="1" as="geometry">
@@ -401,7 +401,7 @@
           <mxGeometry x="393" y="26" width="296" height="150" as="geometry" />
         </mxCell>
         <mxCell id="SLhTDTClX1HCQNrHHvle-108" value="" style="shape=image;html=1;verticalAlign=top;verticalLabelPosition=bottom;labelBackgroundColor=#ffffff;imageAspect=0;aspect=fixed;image=https://cdn1.iconfinder.com/data/icons/business-and-finance-20/200/vector_65_12-128.png" vertex="1" parent="1">
-          <mxGeometry x="321" y="6" width="80" height="80" as="geometry" />
+          <mxGeometry x="312" y="6" width="80" height="80" as="geometry" />
         </mxCell>
         <mxCell id="SLhTDTClX1HCQNrHHvle-109" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0.767;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="SLhTDTClX1HCQNrHHvle-97" target="SLhTDTClX1HCQNrHHvle-97">
           <mxGeometry relative="1" as="geometry" />
