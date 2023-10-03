@@ -58,6 +58,8 @@ def test_invalid_value_type_in_json_string():
 def test_list_of_objects():
     test_string = '{"list_of_models":[{"list_of_ints":[1,2,3]},{"list_of_ints":[4,5,6]}],"num":1}'
     _test_json_schema_parsing_with_string(test_string, SampleModel.schema(), True)
+    test_string = '{"list_of_models": [{"list_of_ints":[1, 2, 3]} , {"list_of_ints":[4,5,6]}],"num":1}'
+    _test_json_schema_parsing_with_string(test_string, SampleModel.schema(), True)
 
 def test_simple_dict():
     test_string = '{"simple_dict":{"a":1,"b":2,"c":3},"num":1}'

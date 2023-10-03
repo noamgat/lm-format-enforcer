@@ -423,9 +423,9 @@ class ListParsingState(PrimitiveParsingState):
 
     def _get_allowed_primitive_characters(self) -> str:
         if not self.seen_list_opener:
-            return "["
+            return "[ "
         elif not self.seen_list_closer:
-            return "],"
+            return "], "
         else:
             # The parent function will take care of allowing the ending tokens.
             return ""
