@@ -52,6 +52,7 @@ We created a Google Colab Notebook which contains a full example of how to use t
   <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/>
 </a>
 
+You can also [view the notebook in GitHub](https://github.com/noamgat/lm-format-enforcer/blob/main/samples/colab_llama2_enforcer.ipynb).
 ## How does it work?
 
 The library works by combining a character level parser and a tokenizer prefix tree into a smart token filtering mechanism.
