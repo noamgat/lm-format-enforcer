@@ -110,6 +110,14 @@ def get_parser(
             raise Exception("Unsupported enum type " + str(value_schema.enum))
     elif value_schema.type == "integer":
         return NumberParsingState(parsing_state, ending_characters, False)
+    elif value_schema.type == "boolean":
+        return StringParsingState(
+            parsing_state,
+            ending_characters,
+            ["true", "false"],
+            require_opening_quote=False,
+            require_closing_quote=False,
+        )
     elif value_schema.type == "number":
         return NumberParsingState(parsing_state, ending_characters, True)
     elif value_schema.type == "array":

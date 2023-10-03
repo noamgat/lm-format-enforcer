@@ -35,6 +35,7 @@ class SampleModel(BaseModel):
     list_of_models: Optional[List[InnerModel]] = None
     enum: Optional[IntegerEnum] = None
     enum_dict: Optional[Dict[str, StringEnum]] = None
+    true_or_false: Optional[bool] = None
 
 
 def test_parsing_test_model():
@@ -94,5 +95,9 @@ def test_required_field():
     test_string = '{"dec": 1.1}'  # num is a required field, doesn't exist, should fail.
     _test_json_schema_parsing_with_string(test_string, SampleModel.schema(), False)
 
+def test_boolean_field():
+    _test_json_schema_parsing_with_string('{"num":1,"true_or_false":false}', SampleModel.schema(), True)
+    _test_json_schema_parsing_with_string('{"num":1,"true_or_false":true}', SampleModel.schema(), True)
+    _test_json_schema_parsing_with_string('{"num":1,"true_or_false":falsy}', SampleModel.schema(), False)
 
     
