@@ -8,7 +8,7 @@ def assert_parser_with_string(string: str, parser: CharacterLevelParser, expect_
                 parser = parser.add_character(character)
             else:
                 if expect_success:
-                    raise ValueError(f"Parser failed to parse '{character}' at index {idx}")
+                    raise ValueError(f"Parser does not allow '{character}' at index {idx}")
                 else:
                     return  # Success
         except Exception as e:

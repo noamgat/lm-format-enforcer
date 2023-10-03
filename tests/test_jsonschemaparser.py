@@ -98,6 +98,7 @@ def test_required_field():
 def test_boolean_field():
     _test_json_schema_parsing_with_string('{"num":1,"true_or_false":false}', SampleModel.schema(), True)
     _test_json_schema_parsing_with_string('{"num":1,"true_or_false":true}', SampleModel.schema(), True)
+    _test_json_schema_parsing_with_string('{"num":1,"true_or_false": true}', SampleModel.schema(), True)
     _test_json_schema_parsing_with_string('{"num":1,"true_or_false":falsy}', SampleModel.schema(), False)
 
     

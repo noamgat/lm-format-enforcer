@@ -66,6 +66,9 @@ def get_parser(
     value_schema: JsonSchemaObject,
     ending_characters: str,
 ) -> BaseParsingState:
+    # Sometimes the schema is a union of a type and null, so we need to get the first type
+    if value_schema.anyOf and len(value_schema.anyOf) == 2 and value_schema.anyOf[1].type == 'null':
+        value_schema = value_schema.anyOf[0]
     if value_schema.type == "string":
         return StringParsingState(
             parsing_state,
@@ -168,9 +171,12 @@ class ObjectParsingState(BaseParsingState):
                         set(possible_keys).difference(self.existing_keys)
                     )
                 ending_characters = ': '
+                # We send require_opening_quote=True and then add_character('"') instead of require_opening_quote=False
+                # Because there is a difference between "don't need a quote" and "received it before creating the parser"
                 key_parser = StringParsingState(
-                    self.root, ending_characters, possible_keys, require_opening_quote=False
+                    self.root, ending_characters, possible_keys, require_opening_quote=True, require_closing_quote=True
                 )
+                key_parser.add_character('"')
                 self.root.object_stack.append(key_parser)
                 self.current_key_parser = key_parser
             if new_character == ":":
@@ -332,9 +338,10 @@ class StringParsingState(PrimitiveParsingState):
         self.seen_closing_quote = False
         self.seen_opening_quote = not require_opening_quote
         self.require_closing_quote = require_closing_quote
+        self.require_opening_quote = require_opening_quote
 
     def add_character(self, new_character: str):
-        if not self.seen_opening_quote and new_character == ' ':
+        if not self.parsed_string and new_character == ' ':
             return
         super().add_character(new_character)
         if new_character == '"':
@@ -351,7 +358,6 @@ class StringParsingState(PrimitiveParsingState):
         if self.seen_closing_quote:
             return ''
         if self.allowed_strings:
-            legal_indices: List[int] = []
             allowed_continuations = [
                 s[len(self.parsed_string) :]
                 for s in self.allowed_strings
@@ -359,8 +365,10 @@ class StringParsingState(PrimitiveParsingState):
             ]
             allowed_next_characters = [allowed_continuation[0] for allowed_continuation in allowed_continuations if len(allowed_continuation) > 0]
             allowed_next_characters = list(set(allowed_next_characters))
-            if self.parsed_string in self.allowed_strings:
+            if self.parsed_string in self.allowed_strings and self.require_closing_quote:
                 allowed_next_characters.append('"')
+            if (not self.parsed_string) and (not self.seen_opening_quote or not self.require_opening_quote):
+                allowed_next_characters.append(' ')
             return "".join(allowed_next_characters)
         else:
             return "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!@#$%^&*()_+-=[]{};:,./<>? '\""
