@@ -172,6 +172,7 @@ class ObjectParsingState(BaseParsingState):
                 if self.is_dictionary:
                     value_schema = self.schema_object.additionalProperties
                     can_continue = True
+                    can_end = True
                 else:
                     possible_keys = list(self.schema_object.properties.keys())
                     possible_keys = list(
@@ -179,9 +180,13 @@ class ObjectParsingState(BaseParsingState):
                     )
                     value_schema = self.schema_object.properties[self.current_key]
                     can_continue = len(possible_keys) > 0
-                ending_characters = "} "
+                    required_keys = self.schema_object.required or []
+                    can_end = set(self.existing_keys).issuperset(required_keys)
+                ending_characters = " "
                 if can_continue:
                     ending_characters += ","
+                if can_end:
+                    ending_characters += "}"
                 self.current_key_parser = get_parser(
                     self.root, value_schema, ending_characters
                 )
@@ -210,7 +215,7 @@ class ObjectParsingState(BaseParsingState):
             if not self.is_dictionary
             else None
         )
-        required_keys = []  # TODO: Extract required fields
+        required_keys = self.schema_object.required or []
         can_end = set(self.existing_keys).issuperset(required_keys)
         can_parse_key = self.is_dictionary or set(possible_keys).issuperset(
             self.existing_keys

@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict, List, Optional
 from pydantic import BaseModel
 from lmformatenforcer import JsonSchemaParser
 from enum import Enum
@@ -27,14 +27,14 @@ class StringEnum(Enum):
 
 class SampleModel(BaseModel):
     num: int
-    dec: float 
-    message: str
-    list_of_strings: List[str]
-    inner_dict: Dict[str, InnerModel]
-    simple_dict: Dict[str, int]
-    list_of_models: List[InnerModel]
-    enum: IntegerEnum
-    enum_dict: Dict[str, StringEnum]
+    dec: Optional[float] = None
+    message: Optional[str] = None
+    list_of_strings: Optional[List[str]] = None
+    inner_dict: Optional[Dict[str, InnerModel]] = None
+    simple_dict: Optional[Dict[str, int]] = None
+    list_of_models: Optional[List[InnerModel]] = None
+    enum: Optional[IntegerEnum] = None
+    enum_dict: Optional[Dict[str, StringEnum]] = None
 
 
 def test_parsing_test_model():
@@ -55,31 +55,31 @@ def test_invalid_value_type_in_json_string():
     _test_json_schema_parsing_with_string(test_string, SampleModel.schema(), False)
 
 def test_list_of_objects():
-    test_string = '{"list_of_models":[{"list_of_ints":[1,2,3]},{"list_of_ints":[4,5,6]}]}'
+    test_string = '{"list_of_models":[{"list_of_ints":[1,2,3]},{"list_of_ints":[4,5,6]}],"num":1}'
     _test_json_schema_parsing_with_string(test_string, SampleModel.schema(), True)
 
 def test_simple_dict():
-    test_string = '{"simple_dict":{"a":1,"b":2,"c":3}}'
+    test_string = '{"simple_dict":{"a":1,"b":2,"c":3},"num":1}'
     _test_json_schema_parsing_with_string(test_string, SampleModel.schema(), True)
 
 def test_int_enum():
-    test_string = '{"enum":4}'
+    test_string = '{"enum":4,"num":1}'
     _test_json_schema_parsing_with_string(test_string, SampleModel.schema(), True)
 
 def test_invalid_int_enum_value():
-    test_string = '{"enum":5}'
+    test_string = '{"enum":5,"num":1}'
     _test_json_schema_parsing_with_string(test_string, SampleModel.schema(), False)
 
 def test_str_enum():
-    test_string = '{"enum_dict":{"a":"One","b":"Two","c":"Three","d":"Four"}}'
+    test_string = '{"enum_dict":{"a":"One","b":"Two","c":"Three","d":"Four"},"num":1}'
     _test_json_schema_parsing_with_string(test_string, SampleModel.schema(), True)
 
 def test_invalid_str_enum_value():
-    test_string = '{"enum_dict":{"a":"Onee"}}'
+    test_string = '{"enum_dict":{"a":"Onee"},"num":1}'
     _test_json_schema_parsing_with_string(test_string, SampleModel.schema(), False)
 
 def test_whitespaces():
-    test_string = '{ "message": ""}'
+    test_string = '{ "message": "","num":1}'
     _test_json_schema_parsing_with_string(test_string, SampleModel.schema(), True)
 
 def test_whitespace_before_number():
@@ -89,6 +89,10 @@ def test_whitespace_before_number():
 def test_whitespace_before_close():
     test_string = '{"num":1 }'
     _test_json_schema_parsing_with_string(test_string, SampleModel.schema(), True)    
+
+def test_required_field():
+    test_string = '{"dec": 1.1}'  # num is a required field, doesn't exist, should fail.
+    _test_json_schema_parsing_with_string(test_string, SampleModel.schema(), False)
 
 
     
