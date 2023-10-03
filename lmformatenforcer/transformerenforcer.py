@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import List, Tuple, Union
 from transformers import AutoModelForCausalLM
 
 from .characterlevelparser import CharacterLevelParser
@@ -61,7 +61,7 @@ class LogitsSaverManager:
 def generate_enforced(model: AutoModelForCausalLM, 
                       tokenizer: PreTrainedTokenizerBase, 
                       character_level_parser: CharacterLevelParser, 
-                      **kwargs: dict) -> str:
+                      **kwargs: dict) -> Union[str, dict]:
     token_enforcer = TokenEnforcer(tokenizer, character_level_parser)
 
     logits_saver = LogitsSaverManager(model)
