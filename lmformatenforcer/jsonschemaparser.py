@@ -1,5 +1,5 @@
 from copy import deepcopy
-from typing import Any, List, Union
+from typing import Any, List, Optional, Union
 
 from .external.jsonschemaobject import JsonSchemaObject
 
@@ -22,7 +22,8 @@ class JsonSchemaParser(CharacterLevelParser):
             parser.root = clone 
         return clone
     
-    def add_character(self, new_character: str):
+    def add_character(self, new_character: str) -> CharacterLevelParser:
+        # The add_character contract requires immutability, therefore we clone before modifying.
         clone = deepcopy(self)
         clone.object_stack[-1].add_character(new_character)
         return clone
@@ -37,6 +38,17 @@ class JsonSchemaParser(CharacterLevelParser):
         self.object_stack.pop()
         if self.object_stack and character_to_pass_to_parent:
             self.object_stack[-1].add_character(character_to_pass_to_parent)
+
+    def shortcut_key(self) -> Optional[str]:
+        if self.object_stack:
+            current_parser = self.object_stack[-1]
+            if isinstance(current_parser, StringParsingState):
+                if not current_parser.allowed_strings and current_parser.seen_opening_quote and not current_parser.seen_closing_quote:
+                    # Performance optimization: When we are parsing a string that is not from a list of allowed strings, most tokens
+                    # are legal. The exploration can be more costly than the LM itself for large tokenizers (because this is pure python),
+                    # so we signal that we are in a "freetext" mode, and reuse the allowed token list throughout the run.
+                    return 'json_freetext'
+        return None
 
 
 class BaseParsingState:

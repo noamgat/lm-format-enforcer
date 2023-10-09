@@ -93,6 +93,8 @@ def generate_enforced(model: AutoModelForCausalLM,
         df_dict['leading_token'] = leading_token_strs
         df_dict['leading_token_idx'] = leading_tokens
         df_dict['leading_score'] = leading_scores
+        df_dict['num_visited_nodes'] = token_enforcer.num_visited_nodes_by_timestep
+        df_dict['num_allowed_tokens'] = token_enforcer.num_tokens_allowed_by_timestep
         output.enforced_scores = df_dict
 
     
