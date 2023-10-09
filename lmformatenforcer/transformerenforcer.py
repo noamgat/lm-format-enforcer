@@ -64,6 +64,8 @@ def generate_enforced(model: AutoModelForCausalLM,
                       **kwargs: dict) -> Union[str, dict]:
     token_enforcer = TokenEnforcer(tokenizer, character_level_parser)
 
+    is_multi_inputs = kwargs['input_ids'].shape[0] > 1
+    is_multi_beams = kwargs.get('num_beams', 1) > 1
     logits_saver = LogitsSaverManager(model)
     logits_saver.replace_logits_warper(token_enforcer.filter_allowed_tokens)
     generate_kwargs = kwargs
@@ -77,8 +79,8 @@ def generate_enforced(model: AutoModelForCausalLM,
 
     sequence = output.sequences[0] if return_dict_in_generate else output[0]
     
-    
-    if return_dict_in_generate and output_scores:
+    support_diagnostics = not (is_multi_inputs or is_multi_beams)  # TODO: Support diagnostics in these cases as well.
+    if return_dict_in_generate and output_scores and support_diagnostics:
         sequence = output.sequences[0]
         generated_scores = logits_saver.get_generated_scores(sequence)
         generated_tokens = sequence[-len(generated_scores):].to('cpu').tolist()
@@ -93,8 +95,6 @@ def generate_enforced(model: AutoModelForCausalLM,
         df_dict['leading_token'] = leading_token_strs
         df_dict['leading_token_idx'] = leading_tokens
         df_dict['leading_score'] = leading_scores
-        df_dict['num_visited_nodes'] = token_enforcer.num_visited_nodes_by_timestep
-        df_dict['num_allowed_tokens'] = token_enforcer.num_tokens_allowed_by_timestep
         output.enforced_scores = df_dict
 
     

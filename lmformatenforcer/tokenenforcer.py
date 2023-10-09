@@ -1,4 +1,5 @@
-from typing import Dict, List, Optional, Union
+from dataclasses import dataclass, field
+from typing import Dict, Hashable, List, Optional, Union
 
 from numpy import rec
 from .characterlevelparser import CharacterLevelParser
@@ -10,14 +11,18 @@ from .tokenizerprefixtree import TokenizerPrefixTree, TokenizerPrefixTreeNode
 
 
 class TokenEnforcer:
+    @dataclass
+    class OutputTensorState:
+        str_so_far: str
+        parser: CharacterLevelParser
+        allowed_tokens: List[int] = field(default_factory=list)
+
     def __init__(self, tokenizer: PreTrainedTokenizerBase, parser: CharacterLevelParser):
         self.tokenizer = tokenizer
         self.token_0 = tokenizer.encode("0")[-1]
-        self.str_so_far: str = None
-        self.parser = parser
+        self.prefix_states: Dict[Hashable, TokenEnforcer.OutputTensorState] = {}
+        self.root_parser = parser
         self.tokenizer_tree = TokenizerPrefixTree(tokenizer)
-        self.num_visited_nodes_by_timestep: List[int] = []
-        self.num_tokens_allowed_by_timestep: List[int] = []
     
     def _decode_single_token(self, token: int) -> str:
         # We prepend token 0 and skip the first letter of the result to get a space if the token is a start word.
@@ -25,18 +30,37 @@ class TokenEnforcer:
         return decoded
 
     def filter_allowed_tokens(self, batch_id: int, sent: 'torch.Tensor') -> List[int]:
-        self._apply_new_characters(sent)
-        self.num_visited_nodes_by_timestep.append(0)
-        shortcut_key = self.parser.shortcut_key()
+        sent_tuple = tuple(sent.tolist())
+        prev_step_tuple = sent_tuple[:-1]
+
+        if sent_tuple in self.prefix_states:
+            # We already calculated for this node, return cached list
+            return self.prefix_states[sent_tuple].allowed_tokens
+        elif prev_step_tuple not in self.prefix_states:
+            # We have not encountered the tensor up to the before-last entry. This means that this is the first call - the instruction / prompt tensor.
+            # Initialize the root node
+            state = TokenEnforcer.OutputTensorState(str_so_far=self.tokenizer.decode(sent),
+                                                    parser=self.root_parser)
+            self._compute_allowed_tokens(state)
+            self.prefix_states[sent_tuple] = state
+            return state.allowed_tokens
+        else:
+            # Find the state that led to this node. We explicitly don't use the concept of "timestep" because of beam search        
+            prev_step_state = self.prefix_states[prev_step_tuple]
+            new_state = self._apply_new_characters(prev_step_state, sent)
+            self.prefix_states[sent_tuple] = new_state
+            self._compute_allowed_tokens(new_state)
+            return new_state.allowed_tokens
+
+    def _compute_allowed_tokens(self, state: 'TokenEnforcer.OutputTensorState'):
         allowed_tokens: List[int] = []
-        self._collect_allowed_tokens(self.parser, self.tokenizer_tree.root, allowed_tokens, shortcut_key)
-        if self.parser.can_end():
+        shortcut_key = state.parser.shortcut_key()
+        self._collect_allowed_tokens(state.parser, self.tokenizer_tree.root, allowed_tokens, shortcut_key)
+        if state.parser.can_end():
             allowed_tokens.append(self.tokenizer.eos_token_id)
-        self.num_tokens_allowed_by_timestep.append(len(allowed_tokens))
-        return allowed_tokens
+        state.allowed_tokens = allowed_tokens
 
     def _collect_allowed_tokens(self, parser: CharacterLevelParser, tree_node: TokenizerPrefixTreeNode, allowed_tokens: List[int], shortcut_key: Optional[str]):
-        self.num_visited_nodes_by_timestep[-1] += 1
         allowed_tokens.extend(tree_node.tokens)
         allowed_characters = parser.get_allowed_characters()
         relevant_characters = tree_node.children.keys()
@@ -56,14 +80,13 @@ class TokenEnforcer:
             self._collect_allowed_tokens(next_parser, next_tree_node, allowed_tokens, None)
             
     
-    def _apply_new_characters(self, sent: 'torch.Tensor'):
+    def _apply_new_characters(self, state: 'TokenEnforcer.OutputTensorState', sent: 'torch.Tensor'):
         characters = self.tokenizer.decode(sent)
-        if self.str_so_far is not None:
-            new_characters = characters[len(self.str_so_far):]
-            # print(f"Received new characters: '{new_characters}'")
-            self.add_characters(new_characters)
-        self.str_so_far = characters
-
-    def add_characters(self, new_characters: str):
+        new_state = TokenEnforcer.OutputTensorState(str_so_far=characters, parser=state.parser)
+        new_characters = characters[len(state.str_so_far):]
         for character in new_characters:
-            self.parser = self.parser.add_character(character)
+            new_state.parser = new_state.parser.add_character(character)
+        return new_state
+        
+
+    
