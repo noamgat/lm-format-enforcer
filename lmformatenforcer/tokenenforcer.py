@@ -1,8 +1,9 @@
 from dataclasses import dataclass, field
 from typing import Dict, Hashable, List, Optional, Union
+import logging
 
 from numpy import rec
-from .characterlevelparser import CharacterLevelParser
+from .characterlevelparser import CharacterLevelParser, ForceStopParser
 from .jsonschemaparser import JsonSchemaParser
 from transformers.tokenization_utils import PreTrainedTokenizerBase
 from .external.jsonschemaobject import JsonSchemaObject
@@ -30,6 +31,10 @@ class TokenEnforcer:
         return decoded
 
     def filter_allowed_tokens(self, batch_id: int, sent: 'torch.Tensor') -> List[int]:
+        # In order to elegantly support beam search and batching, we don't store per-batch information.
+        # Instead, we store a hash of all the states (unique token tensors) we encountered so far.
+        # When we encounter a new unique token tensor, we find the token tensor that led to it, and continue from there.
+
         sent_tuple = tuple(sent.tolist())
         prev_step_tuple = sent_tuple[:-1]
 
@@ -41,8 +46,8 @@ class TokenEnforcer:
             # Initialize the root node
             state = TokenEnforcer.OutputTensorState(str_so_far=self.tokenizer.decode(sent),
                                                     parser=self.root_parser)
-            self._compute_allowed_tokens(state)
             self.prefix_states[sent_tuple] = state
+            self._compute_allowed_tokens(state)
             return state.allowed_tokens
         else:
             # Find the state that led to this node. We explicitly don't use the concept of "timestep" because of beam search        
@@ -58,6 +63,10 @@ class TokenEnforcer:
         self._collect_allowed_tokens(state.parser, self.tokenizer_tree.root, allowed_tokens, shortcut_key)
         if state.parser.can_end():
             allowed_tokens.append(self.tokenizer.eos_token_id)
+        if not allowed_tokens:
+            raise ValueError(f"Parser reached state with no allowed tokens")
+        # root_state = next(state for state in self.prefix_states.values() if state.parser == self.root_parser)
+        # print(f"Allowing {len(allowed_tokens)} tokens after {state.str_so_far[len(root_state.str_so_far):]}")
         state.allowed_tokens = allowed_tokens
 
     def _collect_allowed_tokens(self, parser: CharacterLevelParser, tree_node: TokenizerPrefixTreeNode, allowed_tokens: List[int], shortcut_key: Optional[str]):
@@ -85,7 +94,11 @@ class TokenEnforcer:
         new_state = TokenEnforcer.OutputTensorState(str_so_far=characters, parser=state.parser)
         new_characters = characters[len(state.str_so_far):]
         for character in new_characters:
-            new_state.parser = new_state.parser.add_character(character)
+            if character in new_state.parser.get_allowed_characters():
+                new_state.parser = new_state.parser.add_character(character)
+            else:
+                logging.warning(f"Received an invalid character '{character}', switching to ForceStopParser")
+                new_state.parser = ForceStopParser()
         return new_state
         
 

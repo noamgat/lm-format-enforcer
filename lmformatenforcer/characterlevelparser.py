@@ -42,3 +42,13 @@ class StringParser(CharacterLevelParser):
 
     def can_end(self) -> bool:
         return not self.target_str
+    
+
+class ForceStopParser(CharacterLevelParser):
+    """A simple parser that forbids any characters except the stop token. Used to force stop LM operation"""
+    def add_character(self, new_character: str) -> CharacterLevelParser:
+        return self
+    def get_allowed_characters(self) -> str:
+        return ""
+    def can_end(self) -> bool:
+        return True
