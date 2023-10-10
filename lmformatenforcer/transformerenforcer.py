@@ -84,21 +84,25 @@ def generate_enforced(model: AutoModelForCausalLM,
     
     is_multi_inputs = kwargs['input_ids'].shape[0] > 1
     is_multi_beams = kwargs.get('num_beams', 1) > 1
-    logits_saver = LogitsSaverManager(model)
-    logits_saver.replace_logits_warper(transformers_filter_allowed_tokens)
-    generate_kwargs = kwargs
+    support_diagnostics = not (is_multi_inputs or is_multi_beams)  # TODO: Support diagnostics in these cases as well.
     return_dict_in_generate = kwargs.get('return_dict_in_generate', False)
     output_scores = kwargs.get('output_scores', None)
-    
-    try:
-        output = model.generate(**generate_kwargs)
-    finally:
-        logits_saver.unreplace_logits_warper()
 
-    sequence = output.sequences[0] if return_dict_in_generate else output[0]
-    
-    support_diagnostics = not (is_multi_inputs or is_multi_beams)  # TODO: Support diagnostics in these cases as well.
-    if return_dict_in_generate and output_scores and support_diagnostics:
+    # We do some internals hacking in order to extract the data needed for diagnostics. If we weren't asked for them,
+    # we are better off simply using prefix_allowed_tokens_fn parameter.
+    should_run_in_advanced_mode = return_dict_in_generate and output_scores and support_diagnostics
+
+    if should_run_in_advanced_mode:
+        logits_saver = LogitsSaverManager(model)
+        logits_saver.replace_logits_warper(transformers_filter_allowed_tokens)
+        generate_kwargs = kwargs
+        
+        try:
+            output = model.generate(**generate_kwargs)
+        finally:
+            logits_saver.unreplace_logits_warper()
+
+        sequence = output.sequences[0] if return_dict_in_generate else output[0]
         sequence = output.sequences[0]
         generated_scores = logits_saver.get_generated_scores(sequence)
         generated_tokens = sequence[-len(generated_scores):].to('cpu').tolist()
@@ -114,6 +118,7 @@ def generate_enforced(model: AutoModelForCausalLM,
         df_dict['leading_token_idx'] = leading_tokens
         df_dict['leading_score'] = leading_scores
         output.enforced_scores = df_dict
-
+    else:
+        output = model.generate(**kwargs, prefix_allowed_tokens_fn=transformers_filter_allowed_tokens)
     
     return output
