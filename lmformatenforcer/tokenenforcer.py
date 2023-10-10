@@ -6,6 +6,8 @@ from .tokenizerprefixtree import TokenizerPrefixTree, TokenizerPrefixTreeNode
 
 
 class TokenEnforcer:
+    """TokenEnforcer provides a token filtering mechanism, given a CharacterLevelParser and some information about the tokenizer.
+    It is the main entry point for extending lm-format-enforcer to new inference libraries. See __init__() and get_allowed_tokens()"""
     @dataclass
     class OutputTensorState:
         str_so_far: str
@@ -16,6 +18,14 @@ class TokenEnforcer:
                  parser: CharacterLevelParser,
                  decoder: Callable[[List[int]], str],
                  eos_token_id: int):
+        """
+        Create a new TokenEnforcer.
+        :param regular_tokens: A list of tuples (token_id, token_string) for all the regular (not special) tokens in the tokenizer vocabulary.
+        Note that token_string is expected to include leading / trailing whitespaces if relevant.
+        :param parser: A CharacterLevelParser that defines the allowed strings.
+        :param decoder: A function that decodes a list of token ids into a string.
+        :param eos_token_id: The token id of the end-of-string token.
+        """
         self.prefix_states: Dict[Hashable, TokenEnforcer.OutputTensorState] = {}
         self.root_parser = parser
         self.tokenizer_tree = TokenizerPrefixTree(regular_tokens)
@@ -23,10 +33,14 @@ class TokenEnforcer:
         self.eos_token_id = eos_token_id
 
     def get_allowed_tokens(self, token_sequence: List[int]) -> List[int]:
+        """
+        Get a list of allowed tokens, given a list of tokens that were already generated.
+        :param token_sequence: The tokens that were already generated, and the next token will be generated for.
+        :return: A list of token ids that are allowed to be selected next.
+        """
         # In order to elegantly support beam search and batching, we don't store per-batch information.
         # Instead, we store a hash of all the states (unique token tensors) we encountered so far.
         # When we encounter a new unique token tensor, we find the token tensor that led to it, and continue from there.
-
         sent_tuple = tuple(token_sequence)
         prev_step_tuple = sent_tuple[:-1]
 
