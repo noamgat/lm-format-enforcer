@@ -1,12 +1,14 @@
 __all__ = ['CharacterLevelParser', 
            'StringParser', 
            'RegexParser', 
-           'JsonSchemaParser', 
+           'JsonSchemaParser',
+           'TokenEnforcer', 
            'generate_enforced']
 
 from .characterlevelparser import CharacterLevelParser, StringParser
 from .regexparser import RegexParser
 from .jsonschemaparser import JsonSchemaParser
+from .tokenenforcer import TokenEnforcer
 
 try:
     from .transformerenforcer import generate_enforced

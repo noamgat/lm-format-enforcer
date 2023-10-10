@@ -58,16 +58,34 @@ class LogitsSaverManager:
         return best_tokens.tolist(), token_probs_list
 
 
+def _build_regular_tokens_list(tokenizer: PreTrainedTokenizerBase) -> List[Tuple[int, str]]:
+    token_0 = tokenizer.encode("0")[-1]
+    regular_tokens = []
+    for token_idx in range(tokenizer.vocab_size):
+        if token_idx in tokenizer.all_special_ids:
+            continue
+        # We prepend token 0 and skip the first letter of the result to get a space if the token is a start word.
+        decoded = tokenizer.decode([token_0, token_idx])[1:]
+        regular_tokens.append((token_idx, decoded))
+    return regular_tokens
+
+
 def generate_enforced(model: AutoModelForCausalLM, 
                       tokenizer: PreTrainedTokenizerBase, 
                       character_level_parser: CharacterLevelParser, 
                       **kwargs: dict) -> Union[str, dict]:
-    token_enforcer = TokenEnforcer(tokenizer, character_level_parser)
+    
+    regular_tokens = _build_regular_tokens_list(tokenizer)
+    token_enforcer = TokenEnforcer(regular_tokens, character_level_parser, tokenizer.decode, tokenizer.eos_token_id)
 
+    def transformers_filter_allowed_tokens(batch_id: int, sent: torch.Tensor) -> List[int]:
+        token_sequence = sent.tolist()
+        return token_enforcer.get_allowed_tokens(token_sequence)
+    
     is_multi_inputs = kwargs['input_ids'].shape[0] > 1
     is_multi_beams = kwargs.get('num_beams', 1) > 1
     logits_saver = LogitsSaverManager(model)
-    logits_saver.replace_logits_warper(token_enforcer.filter_allowed_tokens)
+    logits_saver.replace_logits_warper(transformers_filter_allowed_tokens)
     generate_kwargs = kwargs
     return_dict_in_generate = kwargs.get('return_dict_in_generate', False)
     output_scores = kwargs.get('output_scores', None)
