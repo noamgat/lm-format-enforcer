@@ -1,10 +1,12 @@
 from copy import deepcopy
 from typing import Any, List, Optional, Union
 
+from lmformatenforcer.consts import COMPLETE_ALPHABET
+
 from .external.jsonschemaobject import JsonSchemaObject
 
 from .characterlevelparser import CharacterLevelParser
-
+from .consts import COMPLETE_ALPHABET
 
 class JsonSchemaParser(CharacterLevelParser):
     def __init__(self, json_schema: Union[dict, JsonSchemaObject], existing_stack: List[Any] = None):
@@ -383,7 +385,7 @@ class StringParsingState(PrimitiveParsingState):
                 allowed_next_characters.append(' ')
             return "".join(allowed_next_characters)
         else:
-            return "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!@#$%^&*()_+-=[]{};:,./<>? '\""
+            return COMPLETE_ALPHABET
 
     def can_end(self) -> bool:
         if self.require_closing_quote:

@@ -40,7 +40,7 @@ print(result)
 
 - Works with any Python language model and tokenizer. Already supports transformers and LangChain. Can be adapted to others.
 - Supports batched generation - each input can have different tokens filtered at every timestep
-- Supports both JSON Schema (strong) and Regular Expression (limited) formats
+- Supports both JSON Schema (strong) and Regular Expression (partial) formats
 - Supports both required and optional fields in JSON schemas
 - Supports nested fields, arrays and dictionaries in JSON schemas
 - Gives the language model freedom to control whitespacing and field ordering in JSON schemas, reducing hallucinations
@@ -69,7 +69,7 @@ Parsing a string into any kind of formatter can be looked at as an implicit tree
 There are several implementations of this interface:
 - ```JsonSchemaParser``` - parses according to a json schema. 
 - ```StringParser``` - forces an exact string (used mainly for diagnostics)
-- ```RegexParser``` - parses according to a regular expression. Note that this cannot use the built in python regex and uses a manually implemented one (https://github.com/xysun/regex), so it has very limited capabilities.
+- ```RegexParser``` - parses according to a regular expression. Note that this cannot use the built in python regex and uses a manually implemented one (via the [interegular](https://pypi.org/project/interegular/) library), so it doesn't cover 100% of the regex standard.
 ### Tokenizer Prefix Tree
 
 Given a tokenizer used by a certain language model, we can build a prefix tree of all the tokens that the language model can generate. This is done by generating all possible sequences of tokens, and adding them to the tree.

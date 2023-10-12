@@ -50,3 +50,20 @@ def test_parsing_repeat():
             string=f'ab{"c" * num_repeats}123', 
             regex='abc+123', 
             expect_success=expect_success)
+        
+
+def test_any_character():
+    for num_repeats in range(20):
+        for character in '0123abcd':
+            expect_success = num_repeats > 0
+            _test_regex_parsing_with_string(
+                string=f'ab{character * num_repeats}123', 
+                regex='ab.+123', 
+                expect_success=expect_success)
+            
+def test_dates():
+    # https://stackoverflow.com/q/15491894 , removed the ^ and $ because interegular doesn't support them
+    date_regex = '(0?[1-9]|[12][0-9]|3[01])[\/\-](0?[1-9]|1[012])[\/\-]\d{4}'
+    _test_regex_parsing_with_string('01/01/2020', date_regex, True)
+    _test_regex_parsing_with_string('29/04/1986', date_regex, True)
+    _test_regex_parsing_with_string('001/01/2020', date_regex, False)

@@ -1,67 +1,71 @@
-from typing import Optional, Set
+from typing import Dict, Optional, Set, Union
+import interegular
+from interegular.fsm import anything_else
+
 from .characterlevelparser import CharacterLevelParser
 from .external import regex
-
-class SequentialPattern:
-    REPLACEMENT_DICT = {
-        "\\d" : "(0|1|2|3|4|5|6|7|8|9)"
-    }
-    def __init__(self, pattern: str, compiled_pattern = None, current_states: Optional[set] = None):
-        if not compiled_pattern:
-            for src, tgt in SequentialPattern.REPLACEMENT_DICT.items():
-                pattern = pattern.replace(src, tgt)
-        self.compiled_pattern = compiled_pattern or regex.compile(pattern)
-        self.current_states = current_states
-        if current_states is None:
-            self.current_states = set()
-            self.compiled_pattern.addstate(self.compiled_pattern.start, self.current_states)
-
-    def add_characters(self, s: str):
-        current_states = self.current_states
-        for c in s:
-            next_states = set()
-            for state in current_states:
-                if c in state.transitions.keys():
-                    trans_state = state.transitions[c]
-                    self.compiled_pattern.addstate(trans_state, next_states)
-           
-            current_states = next_states
-            if not current_states:
-                break
-        return SequentialPattern(None, self.compiled_pattern, current_states)
-    
-    @property
-    def can_end(self) -> bool:
-        for s in self.current_states:
-            if s.is_end:
-                return True
-        return False
-    
-    @property
-    def is_dead_end(self) -> bool:
-         return not self.current_states
-    
-    @property
-    def potential_next_characters(self) -> Set[str]:
-        next_characters = set()
-        for state in self.current_states:
-            next_characters.update(state.transitions.keys())
-        return next_characters
-
+from .consts import COMPLETE_ALPHABET
 
 class RegexParser(CharacterLevelParser):
-    """RegexParser is an example CharacterLevelParser that only allows strings that match a given regular expression.
-    Due to the get_allowed_characters() requirement, we use a custom regex implementation which does not support all of the regex capabilites."""
-    sequential_pattern: SequentialPattern
+    """RegexParser is an example CharacterLevelParser that only allows strings that match a given regular expression."""
 
-    def __init__(self, regex: str, existing_pattern: SequentialPattern = None) -> None:
-        self.sequential_pattern: SequentialPattern = existing_pattern or SequentialPattern(regex)
+    UNINITIALIZED_STATE = -1
+    INVALID_STATE = -2
+
+    class _Context:
+        pattern: interegular.FSM
+        anything_else_characters: str
+        state_character_cache: Dict[int, str]
+    
+    context: _Context
+    current_state: int
+
+    def __init__(self, pattern: Union[str, _Context], current_state: int = UNINITIALIZED_STATE):
+        if isinstance(pattern, str):
+            self.context = RegexParser._Context()
+            self.context.pattern = interegular.parse_pattern(pattern).to_fsm()
+            self.context.state_character_cache = {}
+            not_anything_else_characters = set([c for c in self.context.pattern.alphabet.keys() if c != anything_else])
+            self.context.anything_else_characters = "".join([c for c in COMPLETE_ALPHABET if c not in not_anything_else_characters])
+        else:
+            self.context = pattern
+        self.current_state: int = self.context.pattern.initial if current_state == RegexParser.UNINITIALIZED_STATE else current_state
 
     def add_character(self, new_character: str) -> 'RegexParser':
-        return RegexParser(None, self.sequential_pattern.add_characters(new_character))
+        if self.current_state == RegexParser.INVALID_STATE:
+            return self
+        
+        state = self.current_state
+        fsm = self.context.pattern
+        # Mostly taken from FSM.accept()
+        symbol = new_character
+        if anything_else in fsm.alphabet and not symbol in fsm.alphabet:
+            symbol = anything_else
+        transition = fsm.alphabet[symbol]
 
-    def get_allowed_characters(self) -> str:
-        return "".join(self.sequential_pattern.potential_next_characters)
+        # Missing transition = transition to dead state
+        if not (state in fsm.map and transition in fsm.map[state]):
+            return RegexParser(self.context, RegexParser.INVALID_STATE)
 
+        state = fsm.map[state][transition]
+
+        return RegexParser(self.context, state)
+    
     def can_end(self) -> bool:
-        return self.sequential_pattern.can_end
+        return self.current_state in self.context.pattern.finals
+    
+    def get_allowed_characters(self) -> str:
+        if self.current_state not in self.context.pattern.map:
+            return ''
+        if self.current_state not in self.context.state_character_cache:
+            allowed_characters = []
+            state_map = self.context.pattern.map[self.current_state]
+            for symbol, symbol_idx in self.context.pattern.alphabet.items():
+                if symbol_idx in state_map:
+                    if symbol == anything_else:
+                        allowed_characters.append(self.context.anything_else_characters)
+                    else:
+                        allowed_characters.append(symbol)
+            self.context.state_character_cache[self.current_state] = "".join(allowed_characters)
+        return self.context.state_character_cache[self.current_state]
+
