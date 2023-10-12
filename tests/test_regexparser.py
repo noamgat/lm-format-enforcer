@@ -63,7 +63,7 @@ def test_any_character():
             
 def test_dates():
     # https://stackoverflow.com/q/15491894 , removed the ^ and $ because interegular doesn't support them
-    date_regex = '(0?[1-9]|[12][0-9]|3[01])[\/\-](0?[1-9]|1[012])[\/\-]\d{4}'
+    date_regex = r'(0?[1-9]|[12][0-9]|3[01])[\/\-](0?[1-9]|1[012])[\/\-]\d{4}'
     _test_regex_parsing_with_string('01/01/2020', date_regex, True)
     _test_regex_parsing_with_string('29/04/1986', date_regex, True)
     _test_regex_parsing_with_string('001/01/2020', date_regex, False)
