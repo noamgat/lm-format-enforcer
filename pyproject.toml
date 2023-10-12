@@ -35,6 +35,7 @@ python = ">=3.8,<4.0"
 transformers = ">=4.28.1"
 tokenizers = ">=0.13.3"
 pydantic = ">=1.10.8"
+interegular = ">=0.3.2"
 
 [tool.poetry.group.dev.dependencies]
 mock = "5.1.0"
