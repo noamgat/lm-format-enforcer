@@ -1,9 +1,8 @@
-from typing import Dict, Optional, Set, Union
+from typing import Dict, Union
 import interegular
 from interegular.fsm import anything_else
 
 from .characterlevelparser import CharacterLevelParser
-from .external import regex
 from .consts import COMPLETE_ALPHABET
 
 class RegexParser(CharacterLevelParser):
