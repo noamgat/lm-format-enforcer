@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "lm-format-enforcer"
-version = "0.2.4"
+version = "0.3.0"
 description = "Enforce the output format (JSON Schema, Regex etc) of a language model"
 authors = ["Noam Gat <noamgat@gmail.com>"]
 license = "MIT"
@@ -29,11 +29,8 @@ packages = [
 [tool.poetry.urls]
 "Bug Tracker" = "https://github.com/noamgat/lm-format-enforcer/issues"
 
-
 [tool.poetry.dependencies]
 python = ">=3.8,<4.0"
-transformers = ">=4.28.1"
-tokenizers = ">=0.13.3"
 pydantic = ">=1.10.8"
 interegular = ">=0.3.2"
 
@@ -61,6 +58,8 @@ coverage = {version = "^7.3.1", python = ">=3.8", extras = ["toml"]}
 
 [tool.poetry.group.samples.dependencies]
 Flask = {version = "2.3.2", python = ">=3.8"}
+transformers = ">=4.28.1"
+tokenizers = ">=0.13.3"
 
 [build-system]
 requires = ["poetry-core>=1.1.0"]
