@@ -1,4 +1,5 @@
 from copy import deepcopy
+import enum
 from typing import Any, List, Optional, Union
 
 from lmformatenforcer.consts import COMPLETE_ALPHABET
@@ -9,14 +10,20 @@ from .characterlevelparser import CharacterLevelParser
 from .consts import COMPLETE_ALPHABET
 
 class JsonSchemaParser(CharacterLevelParser):
-    def __init__(self, json_schema: Union[dict, JsonSchemaObject], existing_stack: List[Any] = None):
+    object_stack: List['BaseParsingState']
+    model_class: JsonSchemaObject
+
+    def __init__(self, json_schema: Union[dict, JsonSchemaObject], existing_stack: Optional[List['BaseParsingState']] = None):
         self.model_class = json_schema if isinstance(json_schema, JsonSchemaObject) else JsonSchemaObject(**json_schema)
-        self.object_stack: 'List[BaseParsingState]' = existing_stack or [ObjectParsingState(self.model_class, self)]
+        if existing_stack is None:
+            self.object_stack = [ObjectParsingState(self.model_class, self)]
+        else:
+            self.object_stack = existing_stack
 
     def __deepcopy__(self, memo):
         # Avoid cloning the model class, since it is immutable
         for parser in self.object_stack:
-            parser.root = None
+            parser.root = None  # type: ignore
         clone = JsonSchemaParser(self.model_class, deepcopy(self.object_stack, memo))
         for parser in self.object_stack:
             parser.root = self
@@ -72,7 +79,7 @@ class BaseParsingState:
         raise NotImplementedError()
 
 
-class ObjectParsingStage:
+class ObjectParsingStage(enum.Enum):
     START_OBJECT = "StartObject"
     PARSING_KEY_OR_END = "ParsingKey"
     PARSING_VALUE = "ParsingValue"
