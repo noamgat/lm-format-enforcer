@@ -25,13 +25,18 @@ class JsonSchemaParser(CharacterLevelParser):
         return clone
     
     def add_character(self, new_character: str) -> CharacterLevelParser:
+        if len(self.object_stack) == 0:
+            return self
+        
         # The add_character contract requires immutability, therefore we clone before modifying.
         clone = deepcopy(self)
         clone.object_stack[-1].add_character(new_character)
         return clone
 
     def get_allowed_characters(self) -> str:
-        return self.object_stack[-1].get_allowed_characters() if self.object_stack else ""
+        # We allow whitespace characters when the object stack is empty (= we are done parsing), in order
+        # to avoid edge case issues when beam searching / sampling.
+        return self.object_stack[-1].get_allowed_characters() if self.object_stack else " \n\r\t"
 
     def can_end(self) -> bool:
         return not self.object_stack

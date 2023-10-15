@@ -39,7 +39,7 @@ print(result)
 ## Capabilities / Advantages
 
 - Works with any Python language model and tokenizer. Already supports transformers and LangChain. Can be adapted to others.
-- Supports batched generation - each input can have different tokens filtered at every timestep
+- Supports batched generation and beam searches - each input / beam can have different tokens filtered at every timestep
 - Supports both JSON Schema (strong) and Regular Expression (partial) formats
 - Supports both required and optional fields in JSON schemas
 - Supports nested fields, arrays and dictionaries in JSON schemas
