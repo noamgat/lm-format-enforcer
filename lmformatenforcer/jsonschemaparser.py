@@ -41,8 +41,9 @@ class JsonSchemaParser(CharacterLevelParser):
         return clone
 
     def get_allowed_characters(self) -> str:
-        # We allow whitespace characters when the object stack is empty (= we are done parsing), in order
-        # to avoid edge case issues when beam searching / sampling.
+        # In certain cases, beam search / sample crashes when there are less legal 
+        # continuation tokens than there are beams. Therefore, we allow whitespace 
+        # characters when the object stack is empty (= we are done parsing)
         return self.object_stack[-1].get_allowed_characters() if self.object_stack else " \n\r\t"
 
     def can_end(self) -> bool:
