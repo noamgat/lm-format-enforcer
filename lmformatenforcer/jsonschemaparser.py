@@ -2,19 +2,20 @@ from copy import deepcopy
 import enum
 from typing import Any, List, Optional, Union
 
-from lmformatenforcer.consts import COMPLETE_ALPHABET
-
 from .external.jsonschemaobject import JsonSchemaObject
 
 from .characterlevelparser import CharacterLevelParser
-from .consts import COMPLETE_ALPHABET
+from .consts import COMPLETE_ALPHABET, MAX_CONSECUTIVE_WHITESPACES, WHITESPACE_CHARACTERS
 
 class JsonSchemaParser(CharacterLevelParser):
+
     object_stack: List['BaseParsingState']
     model_class: JsonSchemaObject
+    num_consecutive_whitespaces: int
 
-    def __init__(self, json_schema: Union[dict, JsonSchemaObject], existing_stack: Optional[List['BaseParsingState']] = None):
+    def __init__(self, json_schema: Union[dict, JsonSchemaObject], existing_stack: Optional[List['BaseParsingState']] = None, num_consecutive_whitespaces: int = 0):
         self.model_class = json_schema if isinstance(json_schema, JsonSchemaObject) else JsonSchemaObject(**json_schema)
+        self.num_consecutive_whitespaces = num_consecutive_whitespaces
         if existing_stack is None:
             self.object_stack = [ObjectParsingState(self.model_class, self)]
         else:
@@ -24,7 +25,7 @@ class JsonSchemaParser(CharacterLevelParser):
         # Avoid cloning the model class, since it is immutable
         for parser in self.object_stack:
             parser.root = None  # type: ignore
-        clone = JsonSchemaParser(self.model_class, deepcopy(self.object_stack, memo))
+        clone = JsonSchemaParser(self.model_class, deepcopy(self.object_stack, memo), self.num_consecutive_whitespaces)
         for parser in self.object_stack:
             parser.root = self
         for parser in clone.object_stack:
@@ -32,19 +33,25 @@ class JsonSchemaParser(CharacterLevelParser):
         return clone
     
     def add_character(self, new_character: str) -> CharacterLevelParser:
-        if len(self.object_stack) == 0:
-            return self
-        
         # The add_character contract requires immutability, therefore we clone before modifying.
         clone = deepcopy(self)
-        clone.object_stack[-1].add_character(new_character)
+        if len(clone.object_stack) > 0:
+            clone.object_stack[-1].add_character(new_character)
+        if new_character in WHITESPACE_CHARACTERS:
+            clone.num_consecutive_whitespaces += 1
+        else:
+            clone.num_consecutive_whitespaces = 0
         return clone
 
     def get_allowed_characters(self) -> str:
         # In certain cases, beam search / sample crashes when there are less legal 
         # continuation tokens than there are beams. Therefore, we allow whitespace 
         # characters when the object stack is empty (= we are done parsing)
-        return self.object_stack[-1].get_allowed_characters() if self.object_stack else " \n\r\t"
+        allowed_characters = self.object_stack[-1].get_allowed_characters() if self.object_stack else WHITESPACE_CHARACTERS
+        if self.num_consecutive_whitespaces >= MAX_CONSECUTIVE_WHITESPACES:
+            print("Filtering whitespace characters")
+            allowed_characters = "".join(c for c in allowed_characters if c not in WHITESPACE_CHARACTERS)
+        return allowed_characters
 
     def can_end(self) -> bool:
         return not self.object_stack
