@@ -1,3 +1,4 @@
+# Based on https://jacobian.org/til/github-actions-poetry/
 # Run this job on pushes to `main`, and for pull requests. If you don't specify
 # `branches: [main], then this actions runs _twice_ on pull requests, which is
 # annoying.
@@ -54,7 +55,7 @@ jobs:
 
       # And finally run tests. I'm using pytest and all my pytest config is in my `pyproject.toml`
       # so this line is super-simple. But it could be as complex as you need.
-      - run: poetry run pytest
+      - run: poetry run coverage run -m pytest
 
       # Calculate coverage xml after running tests
       - run: poetry run coverage xml
