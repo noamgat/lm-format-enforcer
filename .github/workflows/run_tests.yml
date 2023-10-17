@@ -3,7 +3,7 @@
 # `branches: [main], then this actions runs _twice_ on pull requests, which is
 # annoying.
 
-name: Run Tests
+name: Unit Tests
 on:
   push:
     branches: [main]
@@ -59,9 +59,11 @@ jobs:
 
       # Calculate coverage xml after running tests
       - run: poetry run coverage xml
+        if: github.ref == 'refs/heads/main'
 
       # Upload coverage xml to Codecov
       - name: Upload coverage reports to Codecov
+        if: github.ref == 'refs/heads/main'
         uses: codecov/codecov-action@v3
         env:
             CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}

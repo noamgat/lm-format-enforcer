@@ -5,6 +5,9 @@
   <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/>
 </a>
 
+[![Code Coverage](https://codecov.io/gh/noamgat/lm-format-enforcer/graph/badge.svg?token=63U3S58VWS)](https://codecov.io/gh/noamgat/lm-format-enforcer)
+![Tests](https://github.com/noamgat/lm-format-enforcer/actions/workflows/run_tests.yml/badge.svg)
+
 
 ![Solution at a glance](https://raw.githubusercontent.com/noamgat/lm-format-enforcer/main/docs/Intro.drawio.svg?sanitize=true)
 
