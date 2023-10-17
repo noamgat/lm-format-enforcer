@@ -58,6 +58,21 @@ print(result)
 - Gives the language model freedom to control whitespacing and field ordering in JSON schemas, reducing hallucinations.
 - Does not modify the high level loop of transformers API, so can be used in any scenario.
 
+
+## Comparison to other libraries
+
+Capability | LM Format Enforcer | [Guidance](https://github.com/guidance-ai/guidance) | [Jsonformer](https://github.com/1rgs/jsonformer) | [Outlines](https://github.com/outlines-dev/outlines)
+:------------ | :-------------| :-------------| :------------- | :----
+Regular Expressions | :white_check_mark: |  :white_check_mark: | :x: | :white_check_mark:
+JSON Schema | :white_check_mark: |  :yellow_circle: (Partial support via Handlebars) | :white_check_mark: | :white_check_mark:
+Batched Generation | :white_check_mark: |  :x: | :x: | :x:
+Beam Search | :white_check_mark: |  :x: | :x: | :x:
+Transformers pipelines | :white_check_mark: | :x: | :x: | :x:
+Optional JSON Fields | :white_check_mark: |  :x: | :x: | :x:
+LLM Controls JSON field ordering and whitespace | :white_check_mark: | :x: | :x: | :x:
+
+Spotted a mistake? Library updated with new capabilities? [Open an issue!](https://github.com/noamgat/lm-format-enforcer/issues)
+
 ## Detailed example
 
 We created a Google Colab Notebook which contains a full example of how to use this library to enforce the output format of llama2, including interpreting the intermediate results. The notebook can run on a free GPU-backed runtime in Colab.
