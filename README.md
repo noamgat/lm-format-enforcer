@@ -65,10 +65,10 @@ Capability | LM Format Enforcer | [Guidance](https://github.com/guidance-ai/guid
 :------------ | :-------------| :-------------| :------------- | :----
 Regular Expressions | :white_check_mark: |  :white_check_mark: | :x: | :white_check_mark:
 JSON Schema | :white_check_mark: |  :yellow_circle: (Partial support via Handlebars) | :white_check_mark: | :white_check_mark:
-Batched Generation | :heavy_check_mark: |  :x: | :x: | :x:
-Beam Search | :heavy_check_mark: |  :x: | :x: | :x:
+Batched Generation | :white_check_mark: |  :x: | :x: | :x:
+Beam Search | :white_check_mark: |  :x: | :x: | :x:
 Transformers pipelines | :white_check_mark: | :x: | :x: | :x:
-Optional JSON Fields | :white_check_mark: |  N/A | :x: | :x:
+Optional JSON Fields | :white_check_mark: |  :x: | :x: | :x:
 LLM Controls JSON field ordering and whitespace | :white_check_mark: | :x: | :x: | :x:
 
 Spotted a mistake? Library updated with new capabilities? [Open an issue!](https://github.com/noamgat/lm-format-enforcer/issues)
