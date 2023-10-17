@@ -19,10 +19,11 @@ This project solves the issues by filtering the tokens that the language model i
 ## Installation
 ```pip install lm-format-enforcer```
 
-## Simple example
+## Basic Tutorial
 ```python
 from pydantic import BaseModel
-from lmformatenforcer import JsonSchemaParser, generate_enforced
+from lmformatenforcer import JsonSchemaParser, build_transformers_prefix_allowed_tokens_fn
+from transformers import pipeline
 
 class AnswerFormat(BaseModel):
     first_name: str
@@ -30,23 +31,32 @@ class AnswerFormat(BaseModel):
     year_of_birth: int
     num_seasons_in_nba: int
 
-question = f'Please give me information about Michael Jordan. You MUST answer using the following json schema: {AnswerFormat.schema_json()}'
-parser = JsonSchemaParser(AnswerFormat.schema())
+# Create a transformers pipeline
+hf_pipeline = pipeline('text-generation', model='meta-llama/Llama-2-7b-hf')
+prompt = f'Here is information about Michael Jordan in the following json schema: {AnswerFormat.schema_json()} :\n'
 
-# Call generate_enforced(model, tokenizer, parser, ...) instead of model.generate(...):
-inputs = tokenizer([question], return_tensors='pt', add_special_tokens=False, return_token_type_ids=False).to(device)
-result = generate_enforced(model, tokenizer, parser, inputs=inputs)
+# Create a character level parser and build a transformers prefix function from it
+parser = JsonSchemaParser(AnswerFormat.schema())
+prefix_function = build_transformers_prefix_allowed_tokens_fn(hf_pipeline.tokenizer, parser)
+
+# Call the pipeline with the prefix function
+output_dict = hf_pipeline(prompt, prefix_allowed_tokens_fn=prefix_function)
+
+# Extract the results
+result = output_dict[0]['generated_text'][len(prompt):]
 print(result)
 # {'first_name': 'Michael', 'last_name': 'Jordan', 'year_of_birth': 1963, 'num_seasons_in_nba': 15}
 ```
+
 ## Capabilities / Advantages
 
 - Works with any Python language model and tokenizer. Already supports transformers and LangChain. Can be adapted to others.
 - Supports batched generation and beam searches - each input / beam can have different tokens filtered at every timestep
-- Supports both JSON Schema (strong) and Regular Expression (partial) formats
+- Supports both JSON Schema and Regular Expression formats
 - Supports both required and optional fields in JSON schemas
 - Supports nested fields, arrays and dictionaries in JSON schemas
-- Gives the language model freedom to control whitespacing and field ordering in JSON schemas, reducing hallucinations
+- Gives the language model freedom to control whitespacing and field ordering in JSON schemas, reducing hallucinations.
+- Does not modify the high level loop of transformers API, so can be used in any scenario.
 
 ## Detailed example
 
@@ -57,6 +67,9 @@ We created a Google Colab Notebook which contains a full example of how to use t
 </a>
 
 You can also [view the notebook in GitHub](https://github.com/noamgat/lm-format-enforcer/blob/main/samples/colab_llama2_enforcer.ipynb).
+
+For the different ways to integrate with huggingface transformers, see the [unit tests](https://github.com/noamgat/lm-format-enforcer/blob/main/tests/test_transformerenforcer.py).
+
 ## How does it work?
 
 The library works by combining a character level parser and a tokenizer prefix tree into a smart token filtering mechanism.
