@@ -49,7 +49,7 @@ class JsonSchemaParser(CharacterLevelParser):
         # characters when the object stack is empty (= we are done parsing)
         allowed_characters = self.object_stack[-1].get_allowed_characters() if self.object_stack else WHITESPACE_CHARACTERS
         if self.num_consecutive_whitespaces >= MAX_CONSECUTIVE_WHITESPACES:
-            print("Filtering whitespace characters")
+            # print("Filtering whitespace characters")
             allowed_characters = "".join(c for c in allowed_characters if c not in WHITESPACE_CHARACTERS)
         return allowed_characters
 
