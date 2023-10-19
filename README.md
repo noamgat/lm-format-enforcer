@@ -9,7 +9,7 @@
 ![Tests](https://github.com/noamgat/lm-format-enforcer/actions/workflows/run_tests.yml/badge.svg)
 
 
-![Solution at a glance](https://raw.githubusercontent.com/noamgat/lm-format-enforcer/main/docs/Intro.drawio.svg?sanitize=true)
+![Solution at a glance](https://raw.githubusercontent.com/noamgat/lm-format-enforcer/main/docs/Intro.webp)
 
 
 Language models are able to generate text, but when requiring a precise output format, they do not always perform as instructed.
