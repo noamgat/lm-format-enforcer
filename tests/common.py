@@ -1,4 +1,5 @@
 from lmformatenforcer import CharacterLevelParser
+from lmformatenforcer.exceptions import LMFormatEnforcerException
 
 
 def assert_parser_with_string(string: str, parser: CharacterLevelParser, expect_success: bool):
@@ -11,6 +12,8 @@ def assert_parser_with_string(string: str, parser: CharacterLevelParser, expect_
                     raise ValueError(f"Parser does not allow '{character}' at index {idx}")
                 else:
                     return  # Success
+        except LMFormatEnforcerException:
+            raise
         except Exception as e:
             raise Exception(f"Error parsing '{character}' at index {idx}: {e}", e)
     if parser.can_end() and not expect_success:

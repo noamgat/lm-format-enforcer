@@ -4,12 +4,14 @@ __all__ = ['CharacterLevelParser',
            'JsonSchemaParser',
            'TokenEnforcer', 
            'generate_enforced',
-           'build_transformers_prefix_allowed_tokens_fn']
+           'build_transformers_prefix_allowed_tokens_fn',
+           'LMFormatEnforcerException']
 
 from .characterlevelparser import CharacterLevelParser, StringParser
 from .regexparser import RegexParser
 from .jsonschemaparser import JsonSchemaParser
 from .tokenenforcer import TokenEnforcer
+from .exceptions import LMFormatEnforcerException
 
 try:
     from .transformerenforcer import generate_enforced, build_transformers_prefix_allowed_tokens_fn

@@ -2,7 +2,10 @@ from typing import Dict, List, Optional
 from pydantic import BaseModel
 from lmformatenforcer import JsonSchemaParser
 from enum import Enum
- 
+import pytest
+
+from lmformatenforcer.exceptions import LMFormatEnforcerException
+
 from .common import assert_parser_with_string
 
 
@@ -103,4 +106,21 @@ def test_boolean_field():
     _test_json_schema_parsing_with_string('{"num":1,"true_or_false": true}', SampleModel.schema(), True)
     _test_json_schema_parsing_with_string('{"num":1,"true_or_false":falsy}', SampleModel.schema(), False)
 
-    
+def test_unspecified_dict_fails():
+    class DictModel(BaseModel):
+        num: int
+        d: dict
+
+    # dict is not valid because we don't know what the value type is, expect our exception
+    with pytest.raises(LMFormatEnforcerException):
+        _test_json_schema_parsing_with_string('{"num":1,"d":{"k":"v"}}', DictModel.schema(), False)
+
+
+def test_unspecified_list_fails():
+    class DictModel(BaseModel):
+        num: int
+        l: list
+
+    # list is not valid because we don't know what the member type is, expect our exception
+    with pytest.raises(LMFormatEnforcerException):
+        _test_json_schema_parsing_with_string('{"num":1,"l":[1,2,3]}', DictModel.schema(), False)

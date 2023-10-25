@@ -2,8 +2,9 @@ from copy import deepcopy
 import enum
 from typing import Any, List, Optional, Union
 
-from .external.jsonschemaobject import JsonSchemaObject
 
+from .external.jsonschemaobject import JsonSchemaObject
+from .exceptions import LMFormatEnforcerException
 from .characterlevelparser import CharacterLevelParser
 from .consts import COMPLETE_ALPHABET, MAX_CONSECUTIVE_WHITESPACES, WHITESPACE_CHARACTERS
 
@@ -100,6 +101,8 @@ def get_parser(
     value_schema: JsonSchemaObject,
     ending_characters: str,
 ) -> BaseParsingState:
+    if value_schema is None:
+        raise LMFormatEnforcerException("value schema is None. This may be a bug in the library, please open an issue at https://github.com/noamgat/lm-format-enforcer/issues")
     # Sometimes the schema is a union of a type and null, so we need to get the first type
     if value_schema.anyOf and len(value_schema.anyOf) == 2 and value_schema.anyOf[1].type == 'null':
         value_schema = value_schema.anyOf[0]
@@ -158,6 +161,8 @@ def get_parser(
     elif value_schema.type == "number":
         return NumberParsingState(parsing_state, ending_characters, True)
     elif value_schema.type == "array":
+        if value_schema.items is None:
+            raise LMFormatEnforcerException(f"List '{value_schema.title}' has no member type. Hint: If this is from a Pydantic Schema, use List[AAA] instead of list")
         return ListParsingState(parsing_state, ending_characters, value_schema.items)
     else:
         raise Exception("Unsupported type " + str(value_schema.type))
@@ -218,6 +223,8 @@ class ObjectParsingState(BaseParsingState):
                 self.current_key = self.current_key_parser.parsed_string
                 self.existing_keys.append(self.current_key)
                 if self.is_dictionary:
+                    if not self.schema_object.additionalProperties:
+                        raise LMFormatEnforcerException(f"Dictionary '{self.schema_object.title}' has no value type. Hint: If this is from a Pydantic Schema, use Dict[str, AAA] instead of dict")
                     value_schema = self.schema_object.additionalProperties
                     can_continue = True
                     can_end = True
