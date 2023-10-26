@@ -50,7 +50,7 @@ print(result)
 
 ## Capabilities / Advantages
 
-- Works with any Python language model and tokenizer. Already supports [transformers](https://github.com/huggingface/transformers), [LangChain](https://docs.langchain.com/docs/), [llama.cpp](https://github.com/noamgat/lm-format-enforcer/blob/main/samples/colab_llamacpppython_integration.ipynb) and [vLLM](https://github.com/noamgat/lm-format-enforcer/blob/main/samples/colab_vllm_integration.ipynb). Can be adapted to others.
+- Works with any Python language model and tokenizer. Already supports [transformers](https://github.com/huggingface/transformers), [LangChain](https://docs.langchain.com/docs/), [LlamaIndex](https://github.com/noamgat/lm-format-enforcer/blob/main/samples/colab_llamaindex_integration.ipynb), [llama.cpp](https://github.com/noamgat/lm-format-enforcer/blob/main/samples/colab_llamacpppython_integration.ipynb) and [vLLM](https://github.com/noamgat/lm-format-enforcer/blob/main/samples/colab_vllm_integration.ipynb). Can be adapted to others.
 - Supports batched generation and beam searches - each input / beam can have different tokens filtered at every timestep
 - Supports both JSON Schema and Regular Expression formats
 - Supports both required and optional fields in JSON schemas
