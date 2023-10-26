@@ -1,13 +1,18 @@
 from typing import Callable, List, Tuple, Union
-from transformers import AutoModelForCausalLM
+try:
+    from transformers import AutoModelForCausalLM
+    from transformers.generation.logits_process import LogitsWarper, PrefixConstrainedLogitsProcessor
+    from transformers.tokenization_utils import PreTrainedTokenizerBase
+except ImportError:
+    raise ImportError('transformers is not installed. Please install it with "pip install transformers"')
 
-from .characterlevelparser import CharacterLevelParser
-from transformers.generation.logits_process import LogitsWarper, PrefixConstrainedLogitsProcessor
-from transformers.tokenization_utils import PreTrainedTokenizerBase
+try:
+    import torch
+except ImportError:
+    raise ImportError('pytorch is not installed. See https://pytorch.org/get-started/locally/ for installation instructions."')
 
-import torch
-
-from .tokenenforcer import TokenEnforcer
+from ..characterlevelparser import CharacterLevelParser
+from ..tokenenforcer import TokenEnforcer
 
 class LogitsSaverWarper(LogitsWarper):
     def __init__(self) -> None:
@@ -135,3 +140,8 @@ def generate_enforced(model: AutoModelForCausalLM,
         output = model.generate(**kwargs, prefix_allowed_tokens_fn=transformers_filter_allowed_tokens)
     
     return output
+
+__all__ = [
+    'build_transformers_prefix_allowed_tokens_fn', 
+    'generate_enforced'
+]
