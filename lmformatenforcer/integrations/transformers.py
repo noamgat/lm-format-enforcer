@@ -1,12 +1,17 @@
 from typing import Callable, List, Tuple, Union
-from transformers import AutoModelForCausalLM
+try:
+    from transformers import AutoModelForCausalLM
+    from transformers.generation.logits_process import LogitsWarper, PrefixConstrainedLogitsProcessor
+    from transformers.tokenization_utils import PreTrainedTokenizerBase
+except ImportError:
+    raise ImportError('transformers is not installed. Please install it with "pip install transformers"')
+
+try:
+    import torch
+except ImportError:
+    raise ImportError('pytorch is not installed. See https://pytorch.org/get-started/locally/ for installation instructions."')
 
 from ..characterlevelparser import CharacterLevelParser
-from transformers.generation.logits_process import LogitsWarper, PrefixConstrainedLogitsProcessor
-from transformers.tokenization_utils import PreTrainedTokenizerBase
-
-import torch
-
 from ..tokenenforcer import TokenEnforcer
 
 class LogitsSaverWarper(LogitsWarper):
