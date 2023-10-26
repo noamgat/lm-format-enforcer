@@ -1,5 +1,8 @@
 # LM Format Enforcer Changelog
 
+## v0.4.1
+- Added integration with the `LlamaIndex` library (huggingface and llama.cpp backends) via sample notebook.
+
 ## v0.4.0
 - Introduced ```lmformatenforcer.integrations``` module which will have the integrations with inference engines.
 - Added llama-cpp-python integration to the library in ```lmformatenforcer.integrations.llamacpp```
