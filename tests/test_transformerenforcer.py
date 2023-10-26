@@ -1,4 +1,5 @@
-from lmformatenforcer import RegexParser, build_transformers_prefix_allowed_tokens_fn, generate_enforced
+from lmformatenforcer import RegexParser
+from lmformatenforcer.integrations.transformers import build_transformers_prefix_allowed_tokens_fn, generate_enforced
 from transformers import pipeline
 
 def _build_pipeline():

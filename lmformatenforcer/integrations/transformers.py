@@ -1,13 +1,13 @@
 from typing import Callable, List, Tuple, Union
 from transformers import AutoModelForCausalLM
 
-from .characterlevelparser import CharacterLevelParser
+from ..characterlevelparser import CharacterLevelParser
 from transformers.generation.logits_process import LogitsWarper, PrefixConstrainedLogitsProcessor
 from transformers.tokenization_utils import PreTrainedTokenizerBase
 
 import torch
 
-from .tokenenforcer import TokenEnforcer
+from ..tokenenforcer import TokenEnforcer
 
 class LogitsSaverWarper(LogitsWarper):
     def __init__(self) -> None:
@@ -135,3 +135,8 @@ def generate_enforced(model: AutoModelForCausalLM,
         output = model.generate(**kwargs, prefix_allowed_tokens_fn=transformers_filter_allowed_tokens)
     
     return output
+
+__all__ = [
+    'build_transformers_prefix_allowed_tokens_fn', 
+    'generate_enforced'
+]
