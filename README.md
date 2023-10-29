@@ -22,7 +22,8 @@ This project solves the issues by filtering the tokens that the language model i
 ## Basic Tutorial
 ```python
 from pydantic import BaseModel
-from lmformatenforcer import JsonSchemaParser, build_transformers_prefix_allowed_tokens_fn
+from lmformatenforcer import JsonSchemaParser
+from lmformatenforcer.integrations.transformers import build_transformers_prefix_allowed_tokens_fn
 from transformers import pipeline
 
 class AnswerFormat(BaseModel):
@@ -67,7 +68,7 @@ Regular Expressions | ✅ |  ✅ | ❌ | ✅
 JSON Schema | ✅ |  🟡 ([Partial conversion is possible](https://github.com/guidance-ai/guidance/blob/main/notebooks/applications/jsonformer.ipynb)) | ✅ | ✅
 Batched Generation | ✅ |  ❌ | ❌ | ❌
 Beam Search | ✅ |  ❌ | ❌ | ❌
-Transformers pipelines | ✅ | ❌ | ❌ | ❌
+Integrates into existing pipelines | ✅ | ❌ | ❌ | ❌
 Optional JSON Fields | ✅ |  ❌ | ❌ | ❌
 LLM Controls JSON field ordering and whitespace | ✅ | ❌ | ❌ | ❌
 
