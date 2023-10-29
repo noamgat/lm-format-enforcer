@@ -21,6 +21,11 @@ This project solves the issues by filtering the tokens that the language model i
 
 ## Basic Tutorial
 ```python
+# Requirements if running from Google Colab with a T4 GPU. 
+!pip install lm-format-enforcer transformers torch huggingface_hub accelerate bitsandbytes cpm_kernels
+# Need to login with an account with access to llama.
+!huggingface-cli login
+
 from pydantic import BaseModel
 from lmformatenforcer import JsonSchemaParser
 from lmformatenforcer.integrations.transformers import build_transformers_prefix_allowed_tokens_fn
@@ -33,7 +38,7 @@ class AnswerFormat(BaseModel):
     num_seasons_in_nba: int
 
 # Create a transformers pipeline
-hf_pipeline = pipeline('text-generation', model='meta-llama/Llama-2-7b-hf')
+hf_pipeline = pipeline('text-generation', model='meta-llama/Llama-2-7b-hf', model_kwargs={'load_in_8bit': True})
 prompt = f'Here is information about Michael Jordan in the following json schema: {AnswerFormat.schema_json()} :\n'
 
 # Create a character level parser and build a transformers prefix function from it
