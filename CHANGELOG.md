@@ -1,5 +1,8 @@
 # LM Format Enforcer Changelog
 
+## v0.4.2
+- Modified example in main README to be able to run end to end in Google Colab
+
 ## v0.4.1
 - Added integration with the `LlamaIndex` library (huggingface and llama.cpp backends) via sample notebook.
 
