@@ -237,7 +237,7 @@ class ObjectParsingState(BaseParsingState):
                     can_continue = len(possible_keys) > 0
                     required_keys = self.schema_object.required or []
                     can_end = set(self.existing_keys).issuperset(required_keys)
-                ending_characters = " "
+                ending_characters = WHITESPACE_CHARACTERS
                 if can_continue:
                     ending_characters += ","
                 if can_end:
@@ -276,7 +276,7 @@ class ObjectParsingState(BaseParsingState):
             self.existing_keys
         )
 
-        possible_characters = [' ']
+        possible_characters = [c for c in WHITESPACE_CHARACTERS]
         if self.current_stage == ObjectParsingStage.START_OBJECT:
             possible_characters.append('{')
         elif self.current_stage == ObjectParsingStage.PARSING_KEY_OR_END:
@@ -340,24 +340,31 @@ class NumberParsingState(PrimitiveParsingState):
         super().__init__(root, ending_characters)
         self.allow_floating_point = allow_floating_point
         self.seen_decimal_point = False
+        self.seen_whitespace_after_digits = False
 
     def add_character(self, new_character: str):
-        if new_character == " ":
+        if new_character in WHITESPACE_CHARACTERS:
+            if self.parsed_string:
+                self.seen_whitespace_after_digits = True
             return
         super().add_character(new_character)
         if new_character == ".":
             self.seen_decimal_point = True
 
     def _get_allowed_primitive_characters(self) -> str:
+        if self.seen_whitespace_after_digits:
+            return WHITESPACE_CHARACTERS
         allowed_characters = "0123456789"
         if not self.parsed_string:
-            allowed_characters += "- "
+            allowed_characters += "-" + WHITESPACE_CHARACTERS
         if self.allow_floating_point and not self.seen_decimal_point:
             allowed_characters += "."
+        if self.parsed_string and self.parsed_string[-1].isdigit():
+            allowed_characters += WHITESPACE_CHARACTERS
         return allowed_characters
 
     def can_end(self) -> bool:
-        return bool(self.parsed_string) and self.parsed_string[-1] in "0123456789"
+        return bool(self.parsed_string) and (self.parsed_string[-1].isdigit() or self.seen_whitespace_after_digits)
 
 
 class StringParsingState(PrimitiveParsingState):
@@ -382,7 +389,7 @@ class StringParsingState(PrimitiveParsingState):
         self.require_opening_quote = require_opening_quote
 
     def add_character(self, new_character: str):
-        if not self.parsed_string and new_character == ' ':
+        if (not self.parsed_string or self.seen_closing_quote) and new_character in WHITESPACE_CHARACTERS:
             return
         super().add_character(new_character)
         if new_character == '"':
@@ -395,9 +402,9 @@ class StringParsingState(PrimitiveParsingState):
 
     def _get_allowed_primitive_characters(self) -> str:
         if not self.seen_opening_quote:
-            return '" '
+            return '"' + WHITESPACE_CHARACTERS
         if self.seen_closing_quote:
-            return ''
+            return WHITESPACE_CHARACTERS
         if self.allowed_strings:
             allowed_continuations = [
                 s[len(self.parsed_string) :]
@@ -409,7 +416,7 @@ class StringParsingState(PrimitiveParsingState):
             if self.parsed_string in self.allowed_strings and self.require_closing_quote:
                 allowed_next_characters.append('"')
             if (not self.parsed_string) and (not self.seen_opening_quote or not self.require_opening_quote):
-                allowed_next_characters.append(' ')
+                allowed_next_characters.extend(WHITESPACE_CHARACTERS)
             return "".join(allowed_next_characters)
         else:
             return COMPLETE_ALPHABET
@@ -464,9 +471,9 @@ class ListParsingState(PrimitiveParsingState):
 
     def _get_allowed_primitive_characters(self) -> str:
         if not self.seen_list_opener:
-            return "[ "
+            return "[" + WHITESPACE_CHARACTERS
         elif not self.seen_list_closer:
-            return "], "
+            return "]," + WHITESPACE_CHARACTERS
         else:
             # The parent function will take care of allowing the ending tokens.
             return ""
