@@ -1,5 +1,9 @@
 # LM Format Enforcer Changelog
 
+## v0.4.3
+- Improved JsonSchemaParser whitespace support
+- Improved RegexParser performance, especially in regular expressions with `.+` and `.*` sections.
+
 ## v0.4.2
 - Modified example in main README to be able to run end to end in Google Colab
 
