@@ -1,5 +1,5 @@
 import abc
-from typing import Optional
+from typing import Hashable, Optional
 
 
 class CharacterLevelParser(abc.ABC):
@@ -22,6 +22,10 @@ class CharacterLevelParser(abc.ABC):
     
     def shortcut_key(self) -> Optional[str]:
         """Optional. Return a string that denotes that this state is a repeating state, full tree traversal should be avoided."""
+        return None
+    
+    def cache_key(self) -> Optional[Hashable]:
+        """Optional. Return a string that denotes that this state is a repeating state, and if it is visited again, results can be cached."""
         return None
 
 

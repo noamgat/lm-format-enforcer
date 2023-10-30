@@ -31,6 +31,7 @@ class TokenEnforcer:
         self.tokenizer_tree = TokenizerPrefixTree(regular_tokens)
         self.decoder = decoder
         self.eos_token_id = eos_token_id
+        self.allowed_token_cache: Dict[Hashable, List[int]] = {}
 
     def get_allowed_tokens(self, token_sequence: List[int]) -> List[int]:
         """
@@ -65,6 +66,10 @@ class TokenEnforcer:
 
     def _compute_allowed_tokens(self, state: 'TokenEnforcer.OutputTensorState'):
         allowed_tokens: List[int] = []
+        cache_key = state.parser.cache_key()
+        if cache_key is not None and cache_key in self.allowed_token_cache:
+            state.allowed_tokens = self.allowed_token_cache[cache_key]
+            return
         shortcut_key = state.parser.shortcut_key()
         self._collect_allowed_tokens(state.parser, self.tokenizer_tree.root, allowed_tokens, shortcut_key)
         if state.parser.can_end():
@@ -74,6 +79,8 @@ class TokenEnforcer:
         # root_state = next(state for state in self.prefix_states.values() if state.parser == self.root_parser)
         # print(f"Allowing {len(allowed_tokens)} tokens after {state.str_so_far[len(root_state.str_so_far):]}")
         state.allowed_tokens = allowed_tokens
+        if cache_key is not None:
+            self.allowed_token_cache[cache_key] = allowed_tokens
 
     def _collect_allowed_tokens(self, parser: CharacterLevelParser, tree_node: TokenizerPrefixTreeNode, allowed_tokens: List[int], shortcut_key: Optional[str]):
         allowed_tokens.extend(tree_node.tokens)

@@ -1,4 +1,4 @@
-from typing import Dict, Union
+from typing import Dict, Hashable, Optional, Union
 import interegular
 from interegular.fsm import anything_else
 
@@ -67,4 +67,8 @@ class RegexParser(CharacterLevelParser):
                         allowed_characters.append(symbol)
             self.context.state_character_cache[self.current_state] = "".join(allowed_characters)
         return self.context.state_character_cache[self.current_state]
+    
+    def cache_key(self) -> Optional[Hashable]:
+        # If we are in the same regex fsm state, the allowed next tokens are the same ones
+        return self.current_state
 
