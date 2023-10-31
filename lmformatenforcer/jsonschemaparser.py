@@ -163,7 +163,7 @@ def get_parser(
     elif value_schema.type == "array":
         if value_schema.items is None:
             raise LMFormatEnforcerException(f"List '{value_schema.title}' has no member type. Hint: If this is from a Pydantic Schema, use List[AAA] instead of list")
-        return ListParsingState(parsing_state, ending_characters, value_schema.items)
+        return ListParsingState(parsing_state, ending_characters, value_schema.items, value_schema.minItems, value_schema.maxItems)
     else:
         raise Exception("Unsupported type " + str(value_schema.type))
 
@@ -435,37 +435,47 @@ class ListParsingState(PrimitiveParsingState):
     list_member_type: JsonSchemaObject
     seen_list_opener: bool = False
     seen_list_closer: bool = False
+    num_items_seen: int = 0
 
     def __init__(
         self,
         root: JsonSchemaParser,
         ending_characters: str,
         list_member_type: JsonSchemaObject,
+        min_items: Optional[int],
+        max_items: Optional[int],
     ):
         super().__init__(root, ending_characters)
         self.list_member_type = list_member_type
+        self.min_items = min_items
+        self.max_items = max_items
 
     def add_character(self, new_character: str):
         if self.seen_list_closer:
             super().add_character(new_character)
         if new_character == "[":
+            # TODO: We currently don't support empty arrays, due to needing to allow both the close array bracket
+            # and the first character of the item at the same timestep, which is hard with the current design. 
+            self.num_items_seen = 1
             self.seen_list_opener = True
             self.root.object_stack.append(
                 get_parser(
                     self.root,
                     self.list_member_type,
-                    "],",
+                    self.get_allowed_control_characters(),
                 )
             )
         elif new_character == "]":
             self.seen_list_closer = True
         elif new_character == ",":
             if not self.seen_list_closer:
+                self.num_items_seen += 1
+                
                 self.root.object_stack.append(
                     get_parser(
                         self.root,
                         self.list_member_type,
-                        "],",
+                        self.get_allowed_control_characters(),
                     )
                 )
 
@@ -473,10 +483,22 @@ class ListParsingState(PrimitiveParsingState):
         if not self.seen_list_opener:
             return "[" + WHITESPACE_CHARACTERS
         elif not self.seen_list_closer:
-            return "]," + WHITESPACE_CHARACTERS
+            return self.get_allowed_control_characters() + WHITESPACE_CHARACTERS
         else:
             # The parent function will take care of allowing the ending tokens.
             return ""
 
     def can_end(self) -> bool:
         return self.seen_list_closer
+    
+    def get_allowed_control_characters(self):
+        ending_characters = ""
+        has_enough_items = self.min_items is None or self.num_items_seen >= self.min_items
+        can_add_another_item = self.max_items is None or self.num_items_seen < self.max_items
+
+        if can_add_another_item:
+            ending_characters += ","
+        if has_enough_items:
+            ending_characters += "]"
+        return ending_characters
+    

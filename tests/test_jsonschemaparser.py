@@ -1,6 +1,6 @@
 import json
 from typing import Dict, List, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, conlist
 from lmformatenforcer import JsonSchemaParser
 from enum import Enum
 import pytest
@@ -43,7 +43,7 @@ class SampleModel(BaseModel):
     num: int
     dec: Optional[float] = None
     message: Optional[str] = None
-    list_of_strings: Optional[List[str]] = None
+    list_of_strings: Optional[List[str]] = Field(None, min_length=2, max_length=3)
     inner_dict: Optional[Dict[str, InnerModel]] = None
     simple_dict: Optional[Dict[str, int]] = None
     list_of_models: Optional[List[InnerModel]] = None
@@ -149,3 +149,16 @@ def test_unspecified_list_fails():
     # list is not valid because we don't know what the member type is, expect our exception
     with pytest.raises(LMFormatEnforcerException):
         _test_json_schema_parsing_with_string('{"num":1,"l":[1,2,3]}', DictModel.schema(), False)
+
+
+def test_list_length_limitations():
+    # list_of_strings is defined as having a min length of 2 and a max length of 3
+    one_string = '{"num":1,"list_of_strings":["a"]}'
+    _test_json_schema_parsing_with_string(one_string, SampleModel.schema(), False)
+    two_strings = '{"num":1,"list_of_strings":["a", "b"]}'
+    _test_json_schema_parsing_with_string(two_strings, SampleModel.schema(), True)
+    three_strings = '{"num":1,"list_of_strings":["a","b","c"]}'
+    _test_json_schema_parsing_with_string(three_strings, SampleModel.schema(), True)
+    four_strings = '{"num":1,"list_of_strings":["a","b","c","d"]}'
+    _test_json_schema_parsing_with_string(four_strings, SampleModel.schema(), False)
+    
