@@ -32,6 +32,7 @@ class TokenEnforcer:
         self.decoder = decoder
         self.eos_token_id = eos_token_id
         self.allowed_token_cache: Dict[Hashable, List[int]] = {}
+        self.regular_tokens = regular_tokens
 
     def get_allowed_tokens(self, token_sequence: List[int]) -> List[int]:
         """
