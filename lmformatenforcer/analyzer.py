@@ -3,9 +3,16 @@ try:
     import numpy as np
     import numpy.typing as npt
 except ImportError as e:
-    raise ImportError('numpy is not installed. FormatEnforcerAnalyzer will not be available') from e
-from . import TokenEnforcer
+    class FormatEnforcerAnalyzer: # type: ignore
+        def __init__(self, *args, **kwargs):
+            pass
+        def report_raw_logits(self, *args, **kwargs):
+            pass
+        def generate_report_dict(self, *args, **kwargs):
+            return {}
+    raise ImportError('FormatEnforcerAnalyzer not available because numpy is not installed. Please install it with "pip install numpy"') from e
 
+from . import TokenEnforcer
 
 class FormatEnforcerAnalyzer:
     """A helper class to help analyze the format enforcer's behavior."""
@@ -18,7 +25,7 @@ class FormatEnforcerAnalyzer:
         self.raw_logits[tuple(output_tokens)] = logits
 
     def generate_report_dict(self, output_tokens: List[int]) -> dict:
-        """Generate a report dict containing the analysis results."""
+        """Generate a report dict containing the analysis results for a specific output token sequence."""
         scores_matrix: List[npt.ArrayLike] = []
         allowed_tokens_matrix: List[List[int]] = []
         for idx in range(len(output_tokens)):
