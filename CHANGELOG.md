@@ -1,5 +1,10 @@
 # LM Format Enforcer Changelog
 
+## v0.5.0
+- Introduced FormatEnforcerAnalyzer to allow all inference engines to be analyzed in a unified way. (Was previously only available for transformers)
+- Added support for the analyser in llama.cpp, updated example notebook
+- JsonSchemaParser now take list min/max items into consideration
+
 ## v0.4.3
 - Improved JsonSchemaParser whitespace support
 - Improved RegexParser performance, especially in regular expressions with `.+` and `.*` sections.
