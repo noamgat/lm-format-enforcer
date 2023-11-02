@@ -102,7 +102,7 @@ def get_parser(
     ending_characters: str,
 ) -> BaseParsingState:
     if value_schema is None:
-        raise LMFormatEnforcerException("value schema is None. This may be a bug in the library, please open an issue at https://github.com/noamgat/lm-format-enforcer/issues")
+        raise Exception("JsonSchemaParser: Value schema is None")
     # Sometimes the schema is a union of a type and null, so we need to get the first type
     if value_schema.anyOf and len(value_schema.anyOf) == 2 and value_schema.anyOf[1].type == 'null':
         value_schema = value_schema.anyOf[0]

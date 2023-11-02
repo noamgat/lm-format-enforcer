@@ -1,5 +1,8 @@
 # LM Format Enforcer Changelog
 
+## v0.5.1
+- Made it easier to report bugs in the library
+
 ## v0.5.0
 - Introduced FormatEnforcerAnalyzer to allow all inference engines to be analyzed in a unified way. (Was previously only available for transformers)
 - Added support for the analyser in llama.cpp, updated example notebook
