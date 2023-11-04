@@ -1,5 +1,5 @@
 import abc
-from typing import Hashable, Optional
+from typing import Hashable, List, Optional
 
 
 class CharacterLevelParser(abc.ABC):
@@ -11,7 +11,7 @@ class CharacterLevelParser(abc.ABC):
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def get_allowed_characters(self) ->str:
+    def get_allowed_characters(self) -> str:
         """Return a string containing all characters that are allowed at the current point in the parsing process."""
         raise NotImplementedError()
     
@@ -56,3 +56,77 @@ class ForceStopParser(CharacterLevelParser):
         return ""
     def can_end(self) -> bool:
         return True
+    
+
+class UnionParser(CharacterLevelParser):
+    """A parser that allows a string that would be allowed by any of several different parsers"""
+    def __init__(self, parsers: List[CharacterLevelParser]):
+        self.parsers = parsers
+
+    def add_character(self, new_character: str) -> CharacterLevelParser:
+        # This is a bit of a performance hit, as it means get_allowed_characters() is called twice.
+        relevant_parsers = [parser for parser in self.parsers if new_character in parser.get_allowed_characters()]
+        next_parsers = [parser.add_character(new_character) for parser in relevant_parsers]
+        if len(next_parsers) == 1:
+            return next_parsers[0]
+        return UnionParser(next_parsers)
+    
+    def get_allowed_characters(self) -> str:
+        allowed = "".join([parser.get_allowed_characters() for parser in self.parsers])
+        return "".join(set(allowed))
+    
+    def can_end(self) -> bool:
+        return any([parser.can_end() for parser in self.parsers])
+    
+    def shortcut_key(self) -> str | None:
+        return self.parsers[0].shortcut_key() if len(self.parsers) == 1 else None
+    
+    def cache_key(self) -> Optional[Hashable]:
+        all_cache_keys = tuple(parser.cache_key() for parser in self.parsers)
+        if all(key is not None for key in all_cache_keys):
+            return ('union', all_cache_keys)
+        return None
+
+
+class SequenceParser(CharacterLevelParser):
+    """A parser that is a sequence of multiple parsers."""
+    def __init__(self, parsers: List[CharacterLevelParser]):
+        self.parsers = parsers
+
+    def add_character(self, new_character: str) -> CharacterLevelParser:
+        legal_parsers = []
+        # Tricky edge case: if the first parser can both end and accept the character,
+        # and the second parser can also accept, we don't know which scenario we are dealing
+        # with, so we need to return a UnionParser.
+        for idx, parser in enumerate(self.parsers):
+            if new_character in parser.get_allowed_characters():
+                updated_parser = parser.add_character(new_character)
+                next_parsers = [updated_parser] + self.parsers[idx+1:]
+                legal_parsers.append(SequenceParser(next_parsers))
+            if not parser.can_end():
+                break
+        if len(legal_parsers) == 1:
+            return legal_parsers[0]
+        return UnionParser(legal_parsers)
+    
+    def get_allowed_characters(self) -> str:
+        allowed_character_strs = []
+        for parser in self.parsers:
+            allowed_character_strs.append(parser.get_allowed_characters())
+            if not parser.can_end():
+                break
+        return "".join([parser.get_allowed_characters() for parser in self.parsers])
+    
+    def can_end(self) -> bool:
+        return all([parser.can_end() for parser in self.parsers])
+    
+    def shortcut_key(self) -> Optional[str]:
+        return self.parsers[0].shortcut_key() if len(self.parsers) == 1 else None
+    
+    def cache_key(self) -> Optional[Hashable]:
+        all_cache_keys = tuple(parser.cache_key() for parser in self.parsers)
+        if all(key is not None for key in all_cache_keys):
+            return ('sequence', all_cache_keys)
+        return None
+
+
