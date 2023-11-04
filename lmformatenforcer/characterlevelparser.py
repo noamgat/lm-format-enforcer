@@ -78,7 +78,7 @@ class UnionParser(CharacterLevelParser):
     def can_end(self) -> bool:
         return any([parser.can_end() for parser in self.parsers])
     
-    def shortcut_key(self) -> str | None:
+    def shortcut_key(self) -> Optional[str]:
         return self.parsers[0].shortcut_key() if len(self.parsers) == 1 else None
     
     def cache_key(self) -> Optional[Hashable]:
