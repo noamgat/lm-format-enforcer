@@ -1,4 +1,4 @@
-from typing import Dict, Hashable, Optional, Union
+from typing import Dict, Hashable, Optional, Union, List
 import interegular
 from interegular.fsm import anything_else
 
@@ -59,8 +59,9 @@ class RegexParser(CharacterLevelParser):
         if self.current_state not in self.context.state_character_cache:
             allowed_characters = []
             state_map = self.context.pattern.map[self.current_state]
-            for symbol, symbol_idx in self.context.pattern.alphabet.items():
-                if symbol_idx in state_map:
+            for symbol_idx in state_map:
+                symbols: List[str] = self.context.pattern.alphabet.by_transition[symbol_idx]
+                for symbol in symbols:
                     if symbol == anything_else:
                         allowed_characters.append(self.context.anything_else_characters)
                     else:
