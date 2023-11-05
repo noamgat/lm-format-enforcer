@@ -52,6 +52,10 @@ class SampleModel(BaseModel):
     true_or_false: Optional[bool] = None
 
 
+def test_minimal():
+    test_string = '{"num":1}'
+    _test_json_schema_parsing_with_string(test_string, SampleModel.schema(), True)
+
 def test_parsing_test_model():
     test_string = '{"num":1,"dec":1.1,"message":"ok","list_of_strings":["a","b","c"],"inner_dict":{"a":{"list_of_ints":[1,2,3]}}}'
     _test_json_schema_parsing_with_string(test_string, SampleModel.schema(), True)
