@@ -5,7 +5,7 @@ from typing import Any, List, Optional, Union, cast
 
 from .external.jsonschemaobject import JsonSchemaObject
 from .exceptions import LMFormatEnforcerException
-from .characterlevelparser import CharacterLevelParser
+from .characterlevelparser import CharacterLevelParser, ForceStopParser, UnionParser
 from .consts import COMPLETE_ALPHABET, MAX_CONSECUTIVE_WHITESPACES, WHITESPACE_CHARACTERS
 
 class JsonSchemaParser(CharacterLevelParser):
@@ -20,6 +20,7 @@ class JsonSchemaParser(CharacterLevelParser):
     context: _Context
     num_consecutive_whitespaces: int
     last_parsed_string: str  # Slight hack to allow communicating the parsed key to the object parser
+    last_non_whitespace_character: str  # Slight hack to allow list parser to know if there is an item on top
 
     def __init__(self, json_schema: Union[dict, _Context], existing_stack: Optional[List[CharacterLevelParser]] = None, num_consecutive_whitespaces: int = 0):
         if isinstance(json_schema, JsonSchemaParser._Context):
@@ -35,6 +36,7 @@ class JsonSchemaParser(CharacterLevelParser):
         else:
             self.object_stack = existing_stack
         self.last_parsed_string = ""
+        self.last_non_whitespace_character = ""
     
     def add_character(self, new_character: str) -> CharacterLevelParser:
         # Assumption: The top-most parser that can accept the character is the one that should accept it.
@@ -52,11 +54,11 @@ class JsonSchemaParser(CharacterLevelParser):
         updated_parser.context.active_parser = updated_parser
         updated_parser.last_parsed_string = last_parsed_string
         updated_parser.object_stack[receiving_idx] = updated_parser.object_stack[receiving_idx].add_character(new_character)
-
         if new_character in WHITESPACE_CHARACTERS:
             updated_parser.num_consecutive_whitespaces += 1
         else:
             updated_parser.num_consecutive_whitespaces = 0
+            updated_parser.last_non_whitespace_character = new_character
         return updated_parser
 
     def get_allowed_characters(self) -> str:
@@ -478,16 +480,15 @@ class ListParsingState(PrimitiveParsingState):
     def add_character(self, new_character: str) -> "ListParsingState":
         self = cast(ListParsingState, super().add_character(new_character))
         if new_character == "[":
-            # TODO: We currently don't support empty arrays, due to needing to allow both the close array bracket
-            # and the first character of the item at the same timestep, which is hard with the current design. 
-            self.num_items_seen = 1
             self.seen_list_opener = True
-            self.root.context.active_parser.object_stack.append(
-                get_parser(
-                    self.root,
-                    self.list_member_type
-                )
-            )
+            item_parser = get_parser(self.root, self.list_member_type)
+            requires_items = self.min_items is not None and self.min_items > 0
+            if requires_items:
+                parser_to_push = item_parser
+            else:
+                # If we don't require items, we can also end immediately, the Union + ForceStopParser combination achieves this
+                parser_to_push = UnionParser([item_parser, ForceStopParser()])
+            self.root.context.active_parser.object_stack.append(parser_to_push)
         elif new_character == "]":
             self.seen_list_closer = True
         elif new_character == ",":
@@ -508,16 +509,21 @@ class ListParsingState(PrimitiveParsingState):
         elif not self.seen_list_closer:
             return self.get_allowed_control_characters() + WHITESPACE_CHARACTERS
         else:
-            # The parent function will take care of allowing the ending tokens.
             return ""
 
     def can_end(self) -> bool:
         return self.seen_list_closer
     
     def get_allowed_control_characters(self):
+        num_items = self.num_items_seen
+        is_on_top = self.root.context.active_parser.object_stack[-1] == self
+        if (not is_on_top) and self.root.last_non_whitespace_character != "[":
+            # If there is an active parser above us, and the last character is not [, 
+            # there is an active item parser on the stack that we did not count yet.
+            num_items += 1
         control_characters = ""
-        has_enough_items = self.min_items is None or self.num_items_seen >= self.min_items
-        can_add_another_item = self.max_items is None or self.num_items_seen < self.max_items
+        has_enough_items = self.min_items is None or num_items >= self.min_items
+        can_add_another_item = self.max_items is None or num_items < self.max_items
 
         if can_add_another_item:
             control_characters += ","
