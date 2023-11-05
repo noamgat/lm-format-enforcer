@@ -1,5 +1,10 @@
 # LM Format Enforcer Changelog
 
+## v0.5.2
+- JSON Schema : Supports empty arrays and escape characters in strings
+- Regex : Performance improvement in some cases
+- Added `UnionParser` and `SequenceParser` to allow combining parsers
+
 ## v0.5.1
 - Made it easier to report bugs in the library
 
