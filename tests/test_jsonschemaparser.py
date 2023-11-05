@@ -52,6 +52,10 @@ class SampleModel(BaseModel):
     true_or_false: Optional[bool] = None
 
 
+def test_minimal():
+    test_string = '{"num":1}'
+    _test_json_schema_parsing_with_string(test_string, SampleModel.schema(), True)
+
 def test_parsing_test_model():
     test_string = '{"num":1,"dec":1.1,"message":"ok","list_of_strings":["a","b","c"],"inner_dict":{"a":{"list_of_ints":[1,2,3]}}}'
     _test_json_schema_parsing_with_string(test_string, SampleModel.schema(), True)
@@ -153,6 +157,8 @@ def test_unspecified_list_fails():
 
 def test_list_length_limitations():
     # list_of_strings is defined as having a min length of 2 and a max length of 3
+    no_strings = '{"num":1,"list_of_strings":[]}'
+    _test_json_schema_parsing_with_string(no_strings, SampleModel.schema(), False)
     one_string = '{"num":1,"list_of_strings":["a"]}'
     _test_json_schema_parsing_with_string(one_string, SampleModel.schema(), False)
     two_strings = '{"num":1,"list_of_strings":["a", "b"]}'
@@ -161,4 +167,24 @@ def test_list_length_limitations():
     _test_json_schema_parsing_with_string(three_strings, SampleModel.schema(), True)
     four_strings = '{"num":1,"list_of_strings":["a","b","c","d"]}'
     _test_json_schema_parsing_with_string(four_strings, SampleModel.schema(), False)
-    
+
+    class EmptyListOKModel(BaseModel):
+        num: int
+        list_of_strings: Optional[List[str]] = Field(None, min_length=0, max_length=1)
+    _test_json_schema_parsing_with_string(no_strings, EmptyListOKModel.schema(), True)
+    _test_json_schema_parsing_with_string(one_string, EmptyListOKModel.schema(), True)
+    _test_json_schema_parsing_with_string(two_strings, EmptyListOKModel.schema(), False)
+
+    class ListOfExactlyOneModel(BaseModel):
+        num: int
+        list_of_strings: Optional[List[str]] = Field(None, min_length=1, max_length=1)
+    _test_json_schema_parsing_with_string(no_strings, ListOfExactlyOneModel.schema(), False)
+    _test_json_schema_parsing_with_string(one_string, ListOfExactlyOneModel.schema(), True)
+    _test_json_schema_parsing_with_string(two_strings, ListOfExactlyOneModel.schema(), False)
+
+    class ListOfNoMinLengthModel(BaseModel):
+        num: int
+        list_of_strings: Optional[List[str]] = Field(None, max_length=1)
+    _test_json_schema_parsing_with_string(no_strings, ListOfNoMinLengthModel.schema(), True)
+    _test_json_schema_parsing_with_string(one_string, ListOfNoMinLengthModel.schema(), True)
+    _test_json_schema_parsing_with_string(two_strings, ListOfNoMinLengthModel.schema(), False)
