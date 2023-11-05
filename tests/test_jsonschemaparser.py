@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 from lmformatenforcer import JsonSchemaParser
 from enum import Enum
 import pytest
+from lmformatenforcer.consts import BACKSLASH, BACKSLASH_ESCAPING_CHARACTERS
 
 from lmformatenforcer.exceptions import LMFormatEnforcerException
 
@@ -188,3 +189,25 @@ def test_list_length_limitations():
     _test_json_schema_parsing_with_string(no_strings, ListOfNoMinLengthModel.schema(), True)
     _test_json_schema_parsing_with_string(one_string, ListOfNoMinLengthModel.schema(), True)
     _test_json_schema_parsing_with_string(two_strings, ListOfNoMinLengthModel.schema(), False)
+
+
+def test_string_escaping():
+    for escaping_character in BACKSLASH_ESCAPING_CHARACTERS:
+        test_string = f'{{"num":1,"message":"hello {BACKSLASH}{escaping_character} world"}}'
+        _test_json_schema_parsing_with_string(test_string, SampleModel.schema(), True)
+    for non_escaping_character in 'a1?':
+        test_string = f'{{"num":1,"message":"hello {BACKSLASH}{non_escaping_character} world"}}'
+        _test_json_schema_parsing_with_string(test_string, SampleModel.schema(), False)
+
+    # Unicode
+    test_string = f'{{"num":1,"message":"hello {BACKSLASH}uf9f0 world"}}'
+    _test_json_schema_parsing_with_string(test_string, SampleModel.schema(), True)
+
+    # Not enough unicode digits
+    test_string = f'{{"num":1,"message":"hello {BACKSLASH}uf9f world"}}'
+    _test_json_schema_parsing_with_string(test_string, SampleModel.schema(), False)
+
+    # Unicode digit outside of hex range
+    test_string = f'{{"num":1,"message":"hello {BACKSLASH}uf9fP world"}}'
+    _test_json_schema_parsing_with_string(test_string, SampleModel.schema(), False)
+    

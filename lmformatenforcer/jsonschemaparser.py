@@ -5,8 +5,8 @@ from typing import Any, List, Optional, Union, cast
 
 from .external.jsonschemaobject import JsonSchemaObject
 from .exceptions import LMFormatEnforcerException
-from .characterlevelparser import CharacterLevelParser, ForceStopParser, UnionParser
-from .consts import COMPLETE_ALPHABET, MAX_CONSECUTIVE_WHITESPACES, WHITESPACE_CHARACTERS
+from .characterlevelparser import CharacterLevelParser, ForceStopParser, SequenceParser, StringParser, UnionParser
+from .consts import BACKSLASH, BACKSLASH_ESCAPING_CHARACTERS, COMPLETE_ALPHABET, MAX_CONSECUTIVE_WHITESPACES, WHITESPACE_CHARACTERS
 
 class JsonSchemaParser(CharacterLevelParser):
 
@@ -418,6 +418,14 @@ class StringParsingState(PrimitiveParsingState):
             else:
                 self.seen_closing_quote = True
                 self.parsed_string = self.parsed_string[:-1]
+        if new_character == BACKSLASH:
+            # After a backslack we immediately have the escaping character, and if its 'u', we have 4 hex digits
+            escaping_character_parsers: List[CharacterLevelParser] = [StringParser(c) for c in BACKSLASH_ESCAPING_CHARACTERS]
+            hex_digit_parser: CharacterLevelParser = UnionParser([StringParser(c) for c in "0123456789abcdefABCDEF"])
+            unicode_components: List[CharacterLevelParser] = list([StringParser("u")] + [hex_digit_parser] * 4)
+            unicode_escape_parser: CharacterLevelParser = SequenceParser(unicode_components)
+            json_escaping_parser = UnionParser(escaping_character_parsers + [unicode_escape_parser])
+            self.root.context.active_parser.object_stack.append(json_escaping_parser)
         return self
 
     def get_allowed_characters(self) -> str:
@@ -439,7 +447,7 @@ class StringParsingState(PrimitiveParsingState):
                 allowed_next_characters.extend(WHITESPACE_CHARACTERS)
             return "".join(allowed_next_characters)
         else:
-            return COMPLETE_ALPHABET
+            return COMPLETE_ALPHABET + BACKSLASH
 
     def can_end(self) -> bool:
         if self.require_closing_quote:
