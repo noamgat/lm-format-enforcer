@@ -1,6 +1,12 @@
 import abc
-from typing import Hashable, List, Optional
+import itertools
+from typing import Hashable, Iterable, List, Optional
+from .consts import ANY_CHARACTER_SENTRY
 
+def _merge_character_lists(lists: Iterable[List[str]]) -> List[str]:
+    character_chain = itertools.chain.from_iterable(lists)
+    allowed: List[str] = list(set(character_chain))
+    return allowed
 
 class CharacterLevelParser(abc.ABC):
     """CharacterLevelParser is an interface for classes that can parse strings one character at a time, and determine which characters are allowed at any specific time"""
@@ -11,9 +17,14 @@ class CharacterLevelParser(abc.ABC):
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def get_allowed_characters(self) -> str:
-        """Return a string containing all characters that are allowed at the current point in the parsing process."""
+    def get_allowed_characters(self) -> List[str]:
+        """Return a list of strings containing all characters that are allowed at the current point in the parsing process."""
         raise NotImplementedError()
+    
+    def is_character_allowed(self, character: str) -> bool:
+        """Check whether a character is allowed at the current point in the parsing process."""
+        allowed_characters = self.get_allowed_characters()
+        return character in allowed_characters or ANY_CHARACTER_SENTRY in allowed_characters
     
     @abc.abstractmethod
     def can_end(self) -> bool:
@@ -41,8 +52,8 @@ class StringParser(CharacterLevelParser):
         else:
             raise ValueError(f"Expected '{self.target_str[0]}' but got '{new_character}'")
 
-    def get_allowed_characters(self) -> str:
-        return self.target_str[0] if self.target_str else ""
+    def get_allowed_characters(self) -> List[str]:
+        return [self.target_str[0]] if self.target_str else []
 
     def can_end(self) -> bool:
         return not self.target_str
@@ -52,8 +63,8 @@ class ForceStopParser(CharacterLevelParser):
     """A simple parser that forbids any characters except the stop token. Used to force stop LM operation"""
     def add_character(self, new_character: str) -> CharacterLevelParser:
         return self
-    def get_allowed_characters(self) -> str:
-        return ""
+    def get_allowed_characters(self) -> List[str]:
+        return []
     def can_end(self) -> bool:
         return True
     
@@ -65,15 +76,14 @@ class UnionParser(CharacterLevelParser):
 
     def add_character(self, new_character: str) -> CharacterLevelParser:
         # This is a bit of a performance hit, as it means get_allowed_characters() is called twice.
-        relevant_parsers = [parser for parser in self.parsers if new_character in parser.get_allowed_characters()]
+        relevant_parsers = [parser for parser in self.parsers if parser.is_character_allowed(new_character)]
         next_parsers = [parser.add_character(new_character) for parser in relevant_parsers]
         if len(next_parsers) == 1:
             return next_parsers[0]
         return UnionParser(next_parsers)
     
-    def get_allowed_characters(self) -> str:
-        allowed = "".join([parser.get_allowed_characters() for parser in self.parsers])
-        return "".join(set(allowed))
+    def get_allowed_characters(self) -> List[str]:
+        return _merge_character_lists(parser.get_allowed_characters() for parser in self.parsers)
     
     def can_end(self) -> bool:
         return any([parser.can_end() for parser in self.parsers])
@@ -99,7 +109,7 @@ class SequenceParser(CharacterLevelParser):
         # and the second parser can also accept, we don't know which scenario we are dealing
         # with, so we need to return a UnionParser.
         for idx, parser in enumerate(self.parsers):
-            if new_character in parser.get_allowed_characters():
+            if parser.is_character_allowed(new_character):
                 updated_parser = parser.add_character(new_character)
                 next_parsers = [updated_parser] + self.parsers[idx+1:]
                 legal_parsers.append(SequenceParser(next_parsers))
@@ -109,13 +119,13 @@ class SequenceParser(CharacterLevelParser):
             return legal_parsers[0]
         return UnionParser(legal_parsers)
     
-    def get_allowed_characters(self) -> str:
+    def get_allowed_characters(self) -> List[str]:
         allowed_character_strs = []
         for parser in self.parsers:
             allowed_character_strs.append(parser.get_allowed_characters())
             if not parser.can_end():
                 break
-        return "".join([parser.get_allowed_characters() for parser in self.parsers])
+        return _merge_character_lists(parser.get_allowed_characters() for parser in self.parsers)
     
     def can_end(self) -> bool:
         return all([parser.can_end() for parser in self.parsers])

@@ -35,6 +35,7 @@ class TokenEnforcer:
         self.eos_token_id = eos_token_id
         self.allowed_token_cache: Dict[Hashable, List[int]] = {}
         self.regular_tokens = regular_tokens
+        self.alphabet = "".join([s for s in self.tokenizer_tree.root.children.keys() if len(s) == 1])
 
     def get_allowed_tokens(self, token_sequence: List[int]) -> List[int]:
         """
