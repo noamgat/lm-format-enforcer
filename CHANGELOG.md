@@ -1,5 +1,9 @@
 # LM Format Enforcer Changelog
 
+## v0.6.1
+- Fixed llama.cpp integration to be able to generate unicode characters in json freetext fields
+- Fixed unescaped newlines being allowed in json freetext fields
+  
 ## v0.6.0
 - RegexParser and JsonSchemaParser can now output all of the characters that exist in the tokenzier
 - Added "Known issues and limitations" section to the README
