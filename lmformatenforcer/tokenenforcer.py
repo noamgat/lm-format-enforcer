@@ -3,7 +3,7 @@ from typing import Callable, Dict, Hashable, List, Optional, Tuple
 import logging
 
 from .exceptions import LMFormatEnforcerException
-from .characterlevelparser import CharacterLevelParser, ForceStopParser
+from .characterlevelparser import CharacterLevelParser, ForceStopParser, CharacterLevelParserConfig
 from .tokenizerprefixtree import TokenizerPrefixTree, TokenizerPrefixTreeNode
 
 
@@ -35,6 +35,9 @@ class TokenEnforcer:
         self.eos_token_id = eos_token_id
         self.allowed_token_cache: Dict[Hashable, List[int]] = {}
         self.regular_tokens = regular_tokens
+        tokenizer_alphabet = "".join(token_str for token_str in self.tokenizer_tree.root.children.keys() if len(token_str) == 1)
+        config = CharacterLevelParserConfig(alphabet=tokenizer_alphabet)
+        parser.config = config
 
     def get_allowed_tokens(self, token_sequence: List[int]) -> List[int]:
         """

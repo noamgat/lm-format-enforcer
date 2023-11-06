@@ -5,8 +5,8 @@ from typing import Any, List, Optional, Union, cast
 
 from .external.jsonschemaobject import JsonSchemaObject
 from .exceptions import LMFormatEnforcerException
-from .characterlevelparser import CharacterLevelParser, ForceStopParser, SequenceParser, StringParser, UnionParser
-from .consts import BACKSLASH, BACKSLASH_ESCAPING_CHARACTERS, COMPLETE_ALPHABET, MAX_CONSECUTIVE_WHITESPACES, WHITESPACE_CHARACTERS
+from .characterlevelparser import CharacterLevelParser, CharacterLevelParserConfig, ForceStopParser, SequenceParser, StringParser, UnionParser
+from .consts import BACKSLASH, BACKSLASH_ESCAPING_CHARACTERS, MAX_CONSECUTIVE_WHITESPACES, WHITESPACE_CHARACTERS
 
 class JsonSchemaParser(CharacterLevelParser):
 
@@ -22,7 +22,12 @@ class JsonSchemaParser(CharacterLevelParser):
     last_parsed_string: str  # Slight hack to allow communicating the parsed key to the object parser
     last_non_whitespace_character: str  # Slight hack to allow list parser to know if there is an item on top
 
-    def __init__(self, json_schema: Union[dict, _Context], existing_stack: Optional[List[CharacterLevelParser]] = None, num_consecutive_whitespaces: int = 0):
+    def __init__(self, 
+                 json_schema: Union[dict, _Context], 
+                 config: Optional[CharacterLevelParserConfig] = None, 
+                 existing_stack: Optional[List[CharacterLevelParser]] = None, 
+                 num_consecutive_whitespaces: int = 0):
+        super().__init__(config)
         if isinstance(json_schema, JsonSchemaParser._Context):
             self.context = json_schema
         else:
@@ -50,7 +55,7 @@ class JsonSchemaParser(CharacterLevelParser):
             receiving_idx -= 1
         
         updated_stack = self.object_stack[:receiving_idx + 1]
-        updated_parser = JsonSchemaParser(self.context, updated_stack, self.num_consecutive_whitespaces)
+        updated_parser = JsonSchemaParser(self.context, self.config, updated_stack, self.num_consecutive_whitespaces)
         updated_parser.context.active_parser = updated_parser
         updated_parser.last_parsed_string = last_parsed_string
         updated_parser.object_stack[receiving_idx] = updated_parser.object_stack[receiving_idx].add_character(new_character)
@@ -447,7 +452,7 @@ class StringParsingState(PrimitiveParsingState):
                 allowed_next_characters.extend(WHITESPACE_CHARACTERS)
             return "".join(allowed_next_characters)
         else:
-            return COMPLETE_ALPHABET + BACKSLASH
+            return self.root.config.alphabet + BACKSLASH
 
     def can_end(self) -> bool:
         if self.require_closing_quote:

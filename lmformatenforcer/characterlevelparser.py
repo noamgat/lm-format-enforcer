@@ -1,9 +1,20 @@
 import abc
+from dataclasses import dataclass
 from typing import Hashable, List, Optional
+from .consts import COMPLETE_ALPHABET
+
+
+@dataclass
+class CharacterLevelParserConfig:
+        alphabet: str = COMPLETE_ALPHABET
 
 
 class CharacterLevelParser(abc.ABC):
     """CharacterLevelParser is an interface for classes that can parse strings one character at a time, and determine which characters are allowed at any specific time"""
+
+    def __init__(self, config: Optional[CharacterLevelParserConfig] = None):
+        self._config = config or CharacterLevelParserConfig()
+    
     @abc.abstractmethod
     def add_character(self, new_character: str) -> 'CharacterLevelParser':
         """Add a character to the parser, and return a new parser that represents the state of the parser after the character has been added. This has to be
@@ -27,6 +38,15 @@ class CharacterLevelParser(abc.ABC):
     def cache_key(self) -> Optional[Hashable]:
         """Optional. Return a string that denotes that this state is a repeating state, and if it is visited again, results can be cached."""
         return None
+    
+    @property
+    def config(self) -> CharacterLevelParserConfig:
+        return self._config
+    
+    @config.setter
+    def config(self, new_config: CharacterLevelParserConfig):
+        self._config = new_config
+        return self
 
 
 class StringParser(CharacterLevelParser):

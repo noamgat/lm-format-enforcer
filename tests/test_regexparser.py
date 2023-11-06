@@ -1,8 +1,12 @@
-from lmformatenforcer import RegexParser
+from typing import Optional
+from lmformatenforcer import RegexParser, CharacterLevelParserConfig
+from lmformatenforcer.consts import COMPLETE_ALPHABET
 from .common import assert_parser_with_string
 
-def _test_regex_parsing_with_string(string: str, regex: str, expect_success: bool):
+def _test_regex_parsing_with_string(string: str, regex: str, expect_success: bool, custom_alphabet: Optional[str] = None):
     parser = RegexParser(regex)
+    if custom_alphabet:
+        parser.config = CharacterLevelParserConfig(alphabet=custom_alphabet)
     assert_parser_with_string(string, parser, expect_success)
 
 
@@ -76,3 +80,11 @@ def test_string_choice():
     _test_regex_parsing_with_string('def', choice_regex, True)
     _test_regex_parsing_with_string('ghi', choice_regex, True)
     _test_regex_parsing_with_string('aei', choice_regex, False)
+
+
+def test_increasing_alphabet():
+    any_regex = '...'
+    _test_regex_parsing_with_string('abc', any_regex, True)
+    _test_regex_parsing_with_string('abΣ', any_regex, False)
+    custom_alphabet = COMPLETE_ALPHABET + 'Σ'
+    _test_regex_parsing_with_string('abΣ', any_regex, True, custom_alphabet=custom_alphabet)
