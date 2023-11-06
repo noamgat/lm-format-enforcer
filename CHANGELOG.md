@@ -1,5 +1,10 @@
 # LM Format Enforcer Changelog
 
+## v0.6.0
+- RegexParser and JsonSchemaParser can now output all of the characters that exist in the tokenzier
+- Added "Known issues and limitations" section to the README
+- Fixed a bug in JsonSchemaParser where sometimes illegal commas were allowed
+
 ## v0.5.2
 - JSON Schema : Supports empty arrays and escape characters in strings
 - Regex : Performance improvement in some cases

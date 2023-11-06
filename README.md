@@ -153,3 +153,11 @@ idx | generated_token | generated_token_idx | generated_score | leading_token | 
 
 
 You can see that the model "wanted" to start the answer using ```Sure```, but the format enforcer forced it to use ```Michael``` - there was a big gap in token 1. Afterwards, almost all of the leading scores are all within the allowed token set, meaning the model likely did not hallucinate due to the token forcing. The only exception was timestep 4 - " Born" was forced while the LLM wanted to choose "born". This is a hint for the prompt engineer, to change the prompt to use a lowercase b instead.
+
+
+## Known issues and limitations
+
+- LM Format Enforcer requires a python API to process the output logits of the language model. This means that until the APIs are extended, it can not be used with OpenAI ChatGPT and similar API based solutions.
+- Regular expression syntax is not 100% supported. See [interegular](https://pypi.org/project/interegular/) for more details.
+- LM Format Enforcer can only generate characters that exist in the tokenizer vocabulary. This may be solved in a later version, see [the issue on GitHub](https://github.com/noamgat/lm-format-enforcer/issues/13).
+- JSON Schemas need to be strictly typed - unions or untyped variables are not supported. This may be solved in a later version, see [the issue on GitHub](https://github.com/noamgat/lm-format-enforcer/issues/14).
