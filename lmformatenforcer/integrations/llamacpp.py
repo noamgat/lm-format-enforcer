@@ -19,8 +19,11 @@ def _build_regular_tokens_list(llm: Llama) -> List[Tuple[int, str]]:
             decoded = llm.detokenize([token_0, token_idx]).decode('utf-8')[1:]
             regular_tokens.append((token_idx, decoded))
         except:
-            # This can happen for cases such as raw bytes outside of the ASCII range. We ignore them and never allow them.
-            pass
+            # This can happen for cases such as raw bytes outside of the ASCII range. We assign this a value of �,
+            # which is what huggingface does for tokens that are meaningless on their own. Allowing this in the
+            # json_freetext field will allow the language model to build unicode sequences from multiple tokens
+            # in JSON-freetext fields.
+            regular_tokens.append((token_idx, '�'))
     return regular_tokens
 
 
@@ -44,7 +47,10 @@ def build_llamacpp_logits_processor(llm: Llama, character_level_parser: Characte
     can be passed in the logits_processor list that is sent to the call or generate() method of llama.cpp models."""
     regular_tokens = _build_regular_tokens_list(llm)
     def decoder(sent: List[int]) -> str:
-        return llm.detokenize(sent).decode('utf-8')
+        try:
+            return llm.detokenize(sent).decode('utf-8')
+        except:
+            return decoder(sent[:-1]) + '�'
     token_enforcer = TokenEnforcer(regular_tokens, character_level_parser, decoder, llm.token_eos())
     return LlamaCppLogitsProcessor(token_enforcer, analyze)
 
