@@ -8,7 +8,7 @@ from lmformatenforcer.consts import BACKSLASH, BACKSLASH_ESCAPING_CHARACTERS
 
 from lmformatenforcer.exceptions import LMFormatEnforcerException
 
-from .common import assert_parser_with_string
+from .common import assert_parser_with_string, CharacterNotAllowedException
 
 
 def _test_json_schema_parsing_with_string(string: str, schema_dict: dict, expect_success: bool):
@@ -210,4 +210,15 @@ def test_string_escaping():
     # Unicode digit outside of hex range
     test_string = f'{{"num":1,"message":"hello {BACKSLASH}uf9fP world"}}'
     _test_json_schema_parsing_with_string(test_string, SampleModel.schema(), False)
+
+
+def test_comma_after_all_object_keys_fails():
+    class SomeSchema(BaseModel):
+        key: str
+
+    test_string = '{"key": "val",'
+    with pytest.raises(CharacterNotAllowedException):
+        _test_json_schema_parsing_with_string(test_string, SomeSchema.schema(), True)
+    
+    
     

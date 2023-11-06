@@ -2,6 +2,10 @@ from lmformatenforcer import CharacterLevelParser
 from lmformatenforcer.exceptions import LMFormatEnforcerException
 
 
+class CharacterNotAllowedException(LMFormatEnforcerException):
+    pass
+
+
 def assert_parser_with_string(string: str, parser: CharacterLevelParser, expect_success: bool):
     for idx, character in enumerate(string):
         try:
@@ -9,7 +13,7 @@ def assert_parser_with_string(string: str, parser: CharacterLevelParser, expect_
                 parser = parser.add_character(character)
             else:
                 if expect_success:
-                    raise ValueError(f"Parser does not allow '{character}' at index {idx}")
+                    raise CharacterNotAllowedException(f"Parser does not allow '{character}' at index {idx}")
                 else:
                     return  # Success
         except LMFormatEnforcerException:

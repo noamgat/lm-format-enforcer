@@ -274,7 +274,7 @@ class ObjectParsingState(BaseParsingState):
         )
         required_keys = self.schema_object.required or []
         can_end = set(self.existing_keys).issuperset(required_keys)
-        can_parse_key = self.is_dictionary or set(possible_keys).issuperset(
+        can_parse_key = self.is_dictionary or set(possible_keys).difference(
             self.existing_keys
         )
 
