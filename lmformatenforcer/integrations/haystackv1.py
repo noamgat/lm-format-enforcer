@@ -33,8 +33,7 @@ class LMFormatEnforcerPromptNode(PromptNode):
         raise NotImplementedError(f"Token enforcer not implemented for model type {self.model_type.name}")
 
     def _resolve_model_type(self) -> ModelType:
-        
-        invocation_layer_name = self.model_name_or_path.model_invocation_layer.__class__.__name__ 
+        invocation_layer_name = self.prompt_model.model_invocation_layer.__class__.__name__ 
         try:
             return LMFormatEnforcerPromptNode.ModelType(invocation_layer_name)
         except ValueError:
