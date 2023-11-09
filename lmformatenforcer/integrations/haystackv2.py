@@ -5,19 +5,22 @@ except ImportError:
     raise ImportError('haystack is not installed. Please install it with "pip install farm-haystack" or "pip install haystack-ai')
 
 import enum
-from typing import Any, Callable, Dict, List, Optional, cast
+from typing import Any, Callable, Dict, List, Optional
 from lmformatenforcer import CharacterLevelParser
 
 
 class _ModelType(enum.Enum):
     HUGGINGFACE = 'HuggingFaceLocalGenerator'
-    # VLLM = 'vLLMLocalInvocationLayer'
-    # LLAMA_CPP = 'LlamaCppLocalInvocationLayer.cpp'
+    # VLLM = 'vLLMLocalInvocationLayer' TODO: Add this when vLLM has Haystack V2 support
 
 @component
 class LMFormatEnforcerLocalGenerator:
-    
+    """A generator component for Haystack V2 API that activates the LMFormatEnforcer on the generated text. 
+    It wraps a local generator, and should be added to the pipeline instead of it"""
     def __init__(self, model_component: Component, character_level_parser: Optional[CharacterLevelParser] = None):
+        """Initialize the generator component
+        :param model_component: A local generator component to wrap
+        :param character_level_parser: A CharacterLevelParser that will be used to enforce the format of the generated"""
         self.model_component = model_component
         self.character_level_parser = character_level_parser
         self._model_type = self._resolve_model_type()
@@ -27,7 +30,10 @@ class LMFormatEnforcerLocalGenerator:
     def run(self, prompt: str, generation_kwargs: Optional[Dict[str, Any]] = None):
         try:
             self._inject_enforcer_into_model()
-            return self.model_component.run(prompt)
+            kwargs = {}
+            if generation_kwargs:
+                kwargs['generation_kwargs'] = generation_kwargs
+            return self.model_component.run(prompt, **kwargs)
         finally:
             self._release_model_injection()
 
@@ -46,12 +52,12 @@ class LMFormatEnforcerLocalGenerator:
         raise NotImplementedError(f"Token enforcer not implemented for model type {self._model_type.name}")
 
     def _resolve_model_type(self) -> _ModelType:
-        invocation_layer_name = self.model_component.__class__.__name__ 
+        generator_component_name = self.model_component.__class__.__name__ 
         try:
-            return _ModelType(invocation_layer_name)
+            return _ModelType(generator_component_name)
         except ValueError:
             supported_strings = ",".join(str(t.name) for t in _ModelType)
-            raise ValueError(f"Unsupported invocation layer: {invocation_layer_name}. "
+            raise ValueError(f"Unsupported local generator component layer: {generator_component_name}. "
                              f"Must be one of {supported_strings}")
         
     def _inject_enforcer_into_model(self):

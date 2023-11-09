@@ -1,28 +1,27 @@
 try:
-    from haystack.nodes import PromptNode, PromptModel
+    from haystack.nodes import PromptNode
 except ImportError:
     raise ImportError('haystack is not installed. Please install it with "pip install farm-haystack"')
 
 import enum
-from typing import Callable, Optional, cast
+from typing import Callable, Optional
 from lmformatenforcer import CharacterLevelParser
 
 class LMFormatEnforcerPromptNode(PromptNode):
+    """A prompt node for Haystack V1 API that activates the LMFormatEnforcer on the generated text"""
     class ModelType(enum.Enum):
         HUGGINGFACE = 'HFLocalInvocationLayer'
-        VLLM = 'vLLMLocalInvocationLayer'
-        LLAMA_CPP = 'LlamaCppLocalInvocationLayer.cpp'
+        # VLLM = 'vLLMLocalInvocationLayer' TODO: After vLLM 0.22 will be relased, this will be possible
 
     def __init__(self, *args, character_level_parser: Optional[CharacterLevelParser] = None, **kwargs):
+        """Create a new prompt node that activates the LMFormatEnforcer on the generated text. See PromptNode
+        documentation for all of the regular arguments.
+        :param character_level_parser: A CharacterLevelParser that will be used to enforce the format of the generated"""
         super().__init__(*args, **kwargs)
         self.character_level_parser = character_level_parser
         self.model_type = self._resolve_model_type()
         self.token_enforcer_fn = self._prepare_token_enforcer_fn()
 
-    #@property
-    #def prompt_model(self) -> PromptModel:
-    #    return cast(PromptModel, self.model_name_or_path)
-    
     def _prepare_token_enforcer_fn(self) -> Optional[Callable]:
         if not self.character_level_parser:
             return None
