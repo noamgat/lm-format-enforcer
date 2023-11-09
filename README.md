@@ -1,4 +1,7 @@
 # lm-format-enforcer
+
+![LMFE Logo](https://raw.githubusercontent.com/noamgat/lm-format-enforcer/main/docs/Logo.png)
+
 **Enforce the output format (JSON Schema, Regex etc) of a language model**
 
 <a target="_blank" href="https://colab.research.google.com/github/noamgat/lm-format-enforcer/blob/main/samples/colab_llama2_enforcer.ipynb">
