@@ -1,5 +1,8 @@
 # LM Format Enforcer Changelog
 
+## v0.6.2
+- Added haystack integration
+
 ## v0.6.1
 - Fixed llama.cpp integration to be able to generate unicode characters in json freetext fields
 - Fixed unescaped newlines being allowed in json freetext fields
