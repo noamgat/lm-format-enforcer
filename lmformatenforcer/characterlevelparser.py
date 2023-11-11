@@ -130,12 +130,12 @@ class SequenceParser(CharacterLevelParser):
         return UnionParser(legal_parsers)
     
     def get_allowed_characters(self) -> str:
-        allowed_character_strs = []
+        allowed_characters = set()
         for parser in self.parsers:
-            allowed_character_strs.append(parser.get_allowed_characters())
+            allowed_characters.update(parser.get_allowed_characters())
             if not parser.can_end():
                 break
-        return "".join([parser.get_allowed_characters() for parser in self.parsers])
+        return "".join(allowed_characters)
     
     def can_end(self) -> bool:
         return all([parser.can_end() for parser in self.parsers])
