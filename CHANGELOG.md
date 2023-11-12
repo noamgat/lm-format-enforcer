@@ -1,5 +1,8 @@
 # LM Format Enforcer Changelog
 
+## v0.6.3
+- Community PR: Fixed SequenceParser bug
+
 ## v0.6.2
 - Added haystack integration
 
