@@ -29,3 +29,12 @@ def test_json_markdown_sequence():
     assert_parser_with_string('```json\n{"a": "b"}\n```', parser, True)
     assert_parser_with_string('{"a": "b"}', parser, False)
 
+
+def test_string_sequence_vocabulary():
+    parser = SequenceParser([StringParser('aa'), StringParser('bb')])
+
+    if "a" not in parser.get_allowed_characters():
+        raise ValueError(f"Expect parser vocabulary '{parser.get_allowed_characters()}' to contain 'a'")
+
+    if "b" in parser.get_allowed_characters():
+        raise ValueError(f"Expect parser vocabulary '{parser.get_allowed_characters()}' to not contain 'b'")
