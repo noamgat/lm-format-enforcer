@@ -1,5 +1,8 @@
 # LM Format Enforcer Changelog
 
+## v0.6.4
+- JSON Schema : Supports string min/max length limitation
+
 ## v0.6.3
 - Community PR: Fixed SequenceParser bug
 
