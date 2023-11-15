@@ -1,6 +1,6 @@
 import json
-from typing import Dict, List, Optional
-from pydantic import BaseModel, Field
+from typing import Annotated, Dict, List, Optional
+from pydantic import BaseModel, Field, StringConstraints
 from lmformatenforcer import JsonSchemaParser
 from enum import Enum
 import pytest
@@ -220,5 +220,14 @@ def test_comma_after_all_object_keys_fails():
     with pytest.raises(CharacterNotAllowedException):
         _test_json_schema_parsing_with_string(test_string, SomeSchema.schema(), True)
     
-    
+
+def test_string_length_limitation():
+    class SomeSchema(BaseModel):
+        key: Annotated[str, StringConstraints(min_length=2, max_length=3)]
+
+    for str_length in range(10):
+        test_string = f'{{"key": "{str_length * "a"}"}}'
+        expect_sucess = 2 <= str_length <= 3
+        _test_json_schema_parsing_with_string(test_string, SomeSchema.schema(), expect_sucess)
+
     

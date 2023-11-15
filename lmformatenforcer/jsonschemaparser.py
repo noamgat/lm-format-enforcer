@@ -15,6 +15,7 @@ class JsonSchemaParser(CharacterLevelParser):
         # We store the active parser in the context, so that if a node adds to the stack, it knows
         # to which parser's stack to add.
         active_parser: "JsonSchemaParser"
+        alphabet_without_quotes: str
 
     object_stack: List[CharacterLevelParser]
     context: _Context
@@ -34,6 +35,7 @@ class JsonSchemaParser(CharacterLevelParser):
             self.context = JsonSchemaParser._Context()
             self.context.model_class = JsonSchemaObject(**json_schema)
             self.context.active_parser = self
+            self.context.alphabet_without_quotes = self.config.alphabet.replace('"', '')
         
         self.num_consecutive_whitespaces = num_consecutive_whitespaces
         if existing_stack is None:
@@ -93,7 +95,8 @@ class JsonSchemaParser(CharacterLevelParser):
         if self.object_stack:
             current_parser = self.object_stack[-1]
             if isinstance(current_parser, StringParsingState):
-                if not current_parser.allowed_strings and current_parser.seen_opening_quote and not current_parser.seen_closing_quote:
+                if not current_parser.allowed_strings and current_parser.seen_opening_quote and not current_parser.seen_closing_quote \
+                    and current_parser.min_length is None and current_parser.max_length is None:
                     # Performance optimization: When we are parsing a string that is not from a list of allowed strings, most tokens
                     # are legal. The exploration can be more costly than the LM itself for large tokenizers (because this is pure python),
                     # so we signal that we are in a "freetext" mode, and reuse the allowed token list throughout the run.
@@ -120,6 +123,8 @@ def get_parser(
             parsing_state,
             value_schema.enum,
             require_opening_quote=True,
+            min_length=value_schema.minLength,
+            max_length=value_schema.maxLength,
         )
     elif value_schema.type == "object":
         return ObjectParsingState(value_schema, parsing_state)
@@ -385,6 +390,8 @@ class StringParsingState(PrimitiveParsingState):
     parsed_string: str
     seen_closing_quote: bool
     seen_opening_quote: bool
+    min_length: Optional[int]
+    max_length: Optional[int]
 
     def __init__(
         self,
@@ -392,6 +399,8 @@ class StringParsingState(PrimitiveParsingState):
         allowed_strings: List[str],
         require_opening_quote: bool,
         require_closing_quote: bool = True,
+        min_length: Optional[int]=None,
+        max_length: Optional[int]=None,
     ):
         super().__init__(root)
         self.allowed_strings = allowed_strings
@@ -399,6 +408,8 @@ class StringParsingState(PrimitiveParsingState):
         self.seen_opening_quote = not require_opening_quote
         self.require_closing_quote = require_closing_quote
         self.require_opening_quote = require_opening_quote
+        self.min_length = min_length
+        self.max_length = max_length
 
     def _clone(self) -> "StringParsingState":
         clone = StringParsingState(
@@ -406,6 +417,8 @@ class StringParsingState(PrimitiveParsingState):
             self.allowed_strings,
             self.require_opening_quote,
             self.require_closing_quote,
+            self.min_length,
+            self.max_length
         )
         clone.parsed_string = self.parsed_string
         clone.seen_closing_quote = self.seen_closing_quote
@@ -452,6 +465,10 @@ class StringParsingState(PrimitiveParsingState):
                 allowed_next_characters.extend(WHITESPACE_CHARACTERS)
             return "".join(allowed_next_characters)
         else:
+            if self.min_length is not None and len(self.parsed_string) < self.min_length:
+                return self.root.context.alphabet_without_quotes + BACKSLASH
+            if self.max_length is not None and len(self.parsed_string) >= self.max_length:
+                return '"'
             return self.root.config.alphabet + BACKSLASH
 
     def can_end(self) -> bool:
