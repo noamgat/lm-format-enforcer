@@ -1,5 +1,8 @@
 # LM Format Enforcer Changelog
 
+## v0.6.5
+- Added official vLLM integration that doesn't require monkey patching.
+
 ## v0.6.4
 - JSON Schema : Supports string min/max length limitation
 
