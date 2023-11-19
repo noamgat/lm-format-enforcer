@@ -51,7 +51,7 @@ class LogitsSaverManager:
     def unreplace_logits_warper(self):
         self.model._get_logits_warper = self.old_warper
 
-def _build_regular_tokens_list(tokenizer: PreTrainedTokenizerBase) -> List[Tuple[int, str]]:
+def build_regular_tokens_list(tokenizer: PreTrainedTokenizerBase) -> List[Tuple[int, str]]:
     token_0 = tokenizer.encode("0")[-1]
     regular_tokens = []
     for token_idx in range(tokenizer.vocab_size):
@@ -122,5 +122,6 @@ def generate_enforced(model: AutoModelForCausalLM,
 
 __all__ = [
     'build_transformers_prefix_allowed_tokens_fn', 
-    'generate_enforced'
+    'generate_enforced',
+    'build_regular_tokens_list'
 ]
