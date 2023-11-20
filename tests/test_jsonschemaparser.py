@@ -6,12 +6,10 @@ from enum import Enum
 import pytest
 from lmformatenforcer.consts import BACKSLASH, BACKSLASH_ESCAPING_CHARACTERS
 
-from lmformatenforcer.exceptions import LMFormatEnforcerException
-
 from .common import assert_parser_with_string, CharacterNotAllowedException
 
 
-def _test_json_schema_parsing_with_string(string: str, schema_dict: dict, expect_success: bool):
+def _test_json_schema_parsing_with_string(string: str, schema_dict: Optional[dict], expect_success: bool):
     parser = JsonSchemaParser(schema_dict)
     assert_parser_with_string(string, parser, expect_success)
     if expect_success:
@@ -136,24 +134,20 @@ def test_boolean_field():
     _test_json_schema_parsing_with_string('{"num":1,"true_or_false": true}', SampleModel.schema(), True)
     _test_json_schema_parsing_with_string('{"num":1,"true_or_false":falsy}', SampleModel.schema(), False)
 
-def test_unspecified_dict_fails():
+def test_unspecified_dict():
     class DictModel(BaseModel):
         num: int
         d: dict
 
-    # dict is not valid because we don't know what the value type is, expect our exception
-    with pytest.raises(LMFormatEnforcerException):
-        _test_json_schema_parsing_with_string('{"num":1,"d":{"k":"v"}}', DictModel.schema(), False)
+    _test_json_schema_parsing_with_string('{"num":1,"d":{"k":"v"}}', DictModel.schema(), True)
 
 
-def test_unspecified_list_fails():
+def test_unspecified_list():
     class DictModel(BaseModel):
         num: int
         l: list
 
-    # list is not valid because we don't know what the member type is, expect our exception
-    with pytest.raises(LMFormatEnforcerException):
-        _test_json_schema_parsing_with_string('{"num":1,"l":[1,2,3]}', DictModel.schema(), False)
+    _test_json_schema_parsing_with_string('{"num":1,"l":[1,2,3,"b"]}', DictModel.schema(), True)
 
 
 def test_list_length_limitations():
@@ -231,3 +225,20 @@ def test_string_length_limitation():
         test_string = f'{{"key": "{str_length * "a"}"}}'
         expect_sucess = 2 <= str_length <= 3
         _test_json_schema_parsing_with_string(test_string, SomeSchema.schema(), expect_sucess)
+
+
+def test_any_json_object():
+    _test_json_schema_parsing_with_string("{}", None, True)
+    _test_json_schema_parsing_with_string('{"a": 1, "b": 2.2, "c": "c", "d": [1,2,3, null], "e": {"ee": 2}}', None, True)
+    _test_json_schema_parsing_with_string("true", None, True)
+    _test_json_schema_parsing_with_string('"str"', None, True)
+
+
+def test_union():
+    class SchemaWithUnion(BaseModel):
+        key: int | str
+
+    _test_json_schema_parsing_with_string('{"key": 1}', SchemaWithUnion.schema(), True)
+    _test_json_schema_parsing_with_string('{"key": "a"}', SchemaWithUnion.schema(), True)
+    _test_json_schema_parsing_with_string('{"key": 1.2}', SchemaWithUnion.schema(), False)
+    _test_json_schema_parsing_with_string('{"key": false}', SchemaWithUnion.schema(), False)

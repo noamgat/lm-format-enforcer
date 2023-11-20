@@ -61,7 +61,7 @@ print(result)
 
 - Works with any Python language model and tokenizer. Already supports [transformers](https://github.com/huggingface/transformers), [LangChain](https://python.langchain.com/docs/integrations/llms/lmformatenforcer_experimental), [LlamaIndex](https://docs.llamaindex.ai/en/latest/community/integrations/lmformatenforcer.html), [llama.cpp](https://github.com/noamgat/lm-format-enforcer/blob/main/samples/colab_llamacpppython_integration.ipynb), [vLLM](https://github.com/noamgat/lm-format-enforcer/blob/main/samples/colab_vllm_integration.ipynb) and [Haystack](https://haystack.deepset.ai/integrations/lmformatenforcer). Can be adapted to others.
 - Supports batched generation and beam searches - each input / beam can have different tokens filtered at every timestep
-- Supports both JSON Schema and Regular Expression formats
+- Supports JSON Schema, JSON Mode (schemaless) and Regular Expression formats
 - Supports both required and optional fields in JSON schemas
 - Supports nested fields, arrays and dictionaries in JSON schemas
 - Gives the language model freedom to control whitespacing and field ordering in JSON schemas, reducing hallucinations.
@@ -107,7 +107,7 @@ Parsing a string into any kind of formatter can be looked at as an implicit tree
 ```CharacterLevelParser``` is an interface for parsing according to this implicit structure. ```add_character()``` and ```get_allowed_characters()``` can be seen as tree traversal methods.
 
 There are several implementations of this interface:
-- ```JsonSchemaParser``` - parses according to a json schema. 
+- ```JsonSchemaParser``` - parses according to a json schema (or pure json output - `JsonSchemaParser(None) will result in any json object allowed`). 
 - ```StringParser``` - forces an exact string (used mainly for diagnostics)
 - ```RegexParser``` - parses according to a regular expression. Note that this cannot use the built in python regex and uses a manually implemented one (via the [interegular](https://pypi.org/project/interegular/) library), so it doesn't cover 100% of the regex standard.
 ### Tokenizer Prefix Tree
@@ -163,4 +163,3 @@ You can see that the model "wanted" to start the answer using ```Sure```, but th
 - LM Format Enforcer requires a python API to process the output logits of the language model. This means that until the APIs are extended, it can not be used with OpenAI ChatGPT and similar API based solutions.
 - Regular expression syntax is not 100% supported. See [interegular](https://pypi.org/project/interegular/) for more details.
 - LM Format Enforcer Regex Parser can only generate characters that exist in the tokenizer vocabulary. This may be solved in a later version, see [the issue on GitHub](https://github.com/noamgat/lm-format-enforcer/issues/13).
-- JSON Schemas need to be strictly typed - unions or untyped variables are not supported. This may be solved in a later version, see [the issue on GitHub](https://github.com/noamgat/lm-format-enforcer/issues/14).

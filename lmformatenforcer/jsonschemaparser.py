@@ -3,13 +3,16 @@ import enum
 from typing import Any, List, Optional, Union, cast
 
 
-from .external.jsonschemaobject import JsonSchemaObject
+from .external.jsonschemaobject import JsonSchemaObject, json_schema_data_formats
 from .exceptions import LMFormatEnforcerException
 from .characterlevelparser import CharacterLevelParser, CharacterLevelParserConfig, ForceStopParser, SequenceParser, StringParser, UnionParser
 from .consts import BACKSLASH, BACKSLASH_ESCAPING_CHARACTERS, MAX_CONSECUTIVE_WHITESPACES, WHITESPACE_CHARACTERS
 
-class JsonSchemaParser(CharacterLevelParser):
 
+_ANY_JSON_SCHEMA_DICT = {'anyOf': [{'type': type} for type in json_schema_data_formats.keys()]}
+
+class JsonSchemaParser(CharacterLevelParser):
+    ANY_JSON_OBJECT_SCHEMA: JsonSchemaObject = JsonSchemaObject(**_ANY_JSON_SCHEMA_DICT)
     class _Context:
         model_class: JsonSchemaObject
         # We store the active parser in the context, so that if a node adds to the stack, it knows
@@ -24,22 +27,25 @@ class JsonSchemaParser(CharacterLevelParser):
     last_non_whitespace_character: str  # Slight hack to allow list parser to know if there is an item on top
 
     def __init__(self, 
-                 json_schema: Union[dict, _Context], 
+                 json_schema: Union[dict, _Context, None], 
                  config: Optional[CharacterLevelParserConfig] = None, 
                  existing_stack: Optional[List[CharacterLevelParser]] = None, 
                  num_consecutive_whitespaces: int = 0):
+        """Create a CharacterLevelParser for parsing JSON.
+        :param json_schema: The json schema to parse. Can be a dict of a JSON schema, or None if any json output is allowed."""
         super().__init__(config)
         if isinstance(json_schema, JsonSchemaParser._Context):
             self.context = json_schema
         else:
             self.context = JsonSchemaParser._Context()
+            json_schema = json_schema or _ANY_JSON_SCHEMA_DICT
             self.context.model_class = JsonSchemaObject(**json_schema)
             self.context.active_parser = self
             self.context.alphabet_without_quotes = self.config.alphabet.replace('"', '')
         
         self.num_consecutive_whitespaces = num_consecutive_whitespaces
         if existing_stack is None:
-            self.object_stack = [ObjectParsingState(self.context.model_class, self)]
+            self.object_stack = [get_parser(self, self.context.model_class)]
         else:
             self.object_stack = existing_stack
         self.last_parsed_string = ""
@@ -112,12 +118,12 @@ class BaseParsingState(CharacterLevelParser):
 def get_parser(
     parsing_state: JsonSchemaParser,
     value_schema: JsonSchemaObject
-) -> BaseParsingState:
+) -> CharacterLevelParser:
     if value_schema is None:
         raise Exception("JsonSchemaParser: Value schema is None")
-    # Sometimes the schema is a union of a type and null, so we need to get the first type
-    if value_schema.anyOf and len(value_schema.anyOf) == 2 and value_schema.anyOf[1].type == 'null':
-        value_schema = value_schema.anyOf[0]
+    if value_schema.anyOf:
+        parsers = [get_parser(parsing_state, schema) for schema in value_schema.anyOf]
+        return UnionParser(parsers)
     if value_schema.type == "string":
         return StringParsingState(
             parsing_state,
@@ -168,12 +174,18 @@ def get_parser(
             require_opening_quote=False,
             require_closing_quote=False,
         )
+    elif value_schema.type == "null":
+        return StringParsingState(
+            parsing_state,
+            ["null"],
+            require_opening_quote=False,
+            require_closing_quote=False,
+        )
     elif value_schema.type == "number":
         return NumberParsingState(parsing_state, True)
     elif value_schema.type == "array":
-        if value_schema.items is None:
-            raise LMFormatEnforcerException(f"List '{value_schema.title}' has no member type. Hint: If this is from a Pydantic Schema, use List[AAA] instead of list")
-        return ListParsingState(parsing_state, value_schema.items, value_schema.minItems, value_schema.maxItems)
+        item_schema = value_schema.items or JsonSchemaParser.ANY_JSON_OBJECT_SCHEMA
+        return ListParsingState(parsing_state, item_schema, value_schema.minItems, value_schema.maxItems)
     else:
         raise Exception("Unsupported type " + str(value_schema.type))
 
@@ -246,9 +258,10 @@ class ObjectParsingState(BaseParsingState):
                 self.current_key = self.root.context.active_parser.last_parsed_string
                 self.existing_keys.append(self.current_key)
                 if self.is_dictionary:
-                    if not self.schema_object.additionalProperties:
-                        raise LMFormatEnforcerException(f"Dictionary '{self.schema_object.title}' has no value type. Hint: If this is from a Pydantic Schema, use Dict[str, AAA] instead of dict")
-                    value_schema = self.schema_object.additionalProperties
+                    if self.schema_object.additionalProperties:
+                        value_schema = self.schema_object.additionalProperties
+                    else:
+                        value_schema = JsonSchemaParser.ANY_JSON_OBJECT_SCHEMA
                 else:
                     possible_keys = list(self.schema_object.properties.keys())
                     possible_keys = list(

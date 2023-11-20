@@ -1,5 +1,9 @@
 # LM Format Enforcer Changelog
 
+## v0.7.0
+- JSON Schema: Added support for union types. In pydantic, both `key: int | str` and `key: Union[int, str]` formats are supported
+- JSON Schema: Added support for schemaless JSON mode. `JsonSchemaParser(None)` will now create a parser that accepts any valid JSON.
+
 ## v0.6.5
 - Added official vLLM integration that doesn't require monkey patching.
 
