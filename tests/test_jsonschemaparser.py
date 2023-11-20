@@ -1,5 +1,5 @@
 import json
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 from pydantic import BaseModel, Field
 from lmformatenforcer import JsonSchemaParser
 from enum import Enum
@@ -236,7 +236,7 @@ def test_any_json_object():
 
 def test_union():
     class SchemaWithUnion(BaseModel):
-        key: int | str
+        key: Union[int, str]
 
     _test_json_schema_parsing_with_string('{"key": 1}', SchemaWithUnion.schema(), True)
     _test_json_schema_parsing_with_string('{"key": "a"}', SchemaWithUnion.schema(), True)
