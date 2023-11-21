@@ -1,5 +1,8 @@
 # LM Format Enforcer Changelog
 
+## v0.7.1
+- Added [ExLlamaV2 integration](https://github.com/noamgat/lm-format-enforcer/blob/main/samples/colab_exllamav2_integration.ipynb)
+
 ## v0.7.0
 - JSON Schema: Added support for union types. In pydantic, both `key: int | str` and `key: Union[int, str]` formats are supported
 - JSON Schema: Added support for schemaless JSON mode. `JsonSchemaParser(None)` will now create a parser that accepts any valid JSON.

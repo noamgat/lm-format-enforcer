@@ -50,3 +50,4 @@ class ExLlamaV2TokenEnforcerFilter:
     def next(self) -> Tuple[Set[int], Set[int]]:
         allowed_tokens = self.token_enforcer.get_allowed_tokens(self.token_sequence)
         return set(allowed_tokens), set()
+    
