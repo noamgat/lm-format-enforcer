@@ -25,9 +25,8 @@ This project solves the issues by filtering the tokens that the language model i
 ## Basic Tutorial
 ```python
 # Requirements if running from Google Colab with a T4 GPU. 
-!pip install lm-format-enforcer transformers torch huggingface_hub accelerate bitsandbytes cpm_kernels
-# Need to login with an account with access to llama.
-!huggingface-cli login
+!pip install transformers torch lm-format-enforcer huggingface_hub optimum langchain langchain-experimental
+!pip install auto-gptq --extra-index-url https://huggingface.github.io/autogptq-index/whl/cu118/ 
 
 from pydantic import BaseModel
 from lmformatenforcer import JsonSchemaParser
@@ -41,7 +40,7 @@ class AnswerFormat(BaseModel):
     num_seasons_in_nba: int
 
 # Create a transformers pipeline
-hf_pipeline = pipeline('text-generation', model='meta-llama/Llama-2-7b-hf', model_kwargs={'load_in_8bit': True})
+hf_pipeline = pipeline('text-generation', model='TheBloke/Llama-2-7b-Chat-GPTQ', device_map='auto')
 prompt = f'Here is information about Michael Jordan in the following json schema: {AnswerFormat.schema_json()} :\n'
 
 # Create a character level parser and build a transformers prefix function from it
