@@ -25,7 +25,7 @@ This project solves the issues by filtering the tokens that the language model i
 ## Basic Tutorial
 ```python
 # Requirements if running from Google Colab with a T4 GPU. 
-!pip install transformers torch lm-format-enforcer huggingface_hub optimum langchain langchain-experimental
+!pip install transformers torch lm-format-enforcer huggingface_hub optimum
 !pip install auto-gptq --extra-index-url https://huggingface.github.io/autogptq-index/whl/cu118/ 
 
 from pydantic import BaseModel
