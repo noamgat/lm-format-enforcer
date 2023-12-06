@@ -1,5 +1,9 @@
 # LM Format Enforcer Changelog
 
+## v0.7.2
+- vLLM performance improvements
+- Sample notebooks don't require huggingface account anymore
+
 ## v0.7.1
 - Added [ExLlamaV2 integration](https://github.com/noamgat/lm-format-enforcer/blob/main/samples/colab_exllamav2_integration.ipynb)
 
