@@ -1,5 +1,5 @@
 from typing import Dict, List, Tuple
-
+import json
 
 class TokenizerPrefixTreeNode:
     def __init__(self):
@@ -19,6 +19,13 @@ class TokenizerPrefixTree:
             has_newline = "\n" in decoded or "\r" in decoded
 
             if not (has_quote_before_end or has_newline):
+                if '\\' in decoded[:-1]:
+                    # If there is a backslash that is not trailing, we might be in an illegal json territory. Need to verify
+                    # that is is a legal json character streak
+                    try:
+                        json.loads(f'"{decoded}"')
+                    except json.decoder.JSONDecodeError:
+                        continue
                 self.json_freetext_tokens.append(token_idx)
 
     def _add_token_to_tree(self, token_str: str, token_idx: int, node: TokenizerPrefixTreeNode):

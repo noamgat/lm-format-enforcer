@@ -213,7 +213,16 @@ def test_comma_after_all_object_keys_fails():
     test_string = '{"key": "val",'
     with pytest.raises(CharacterNotAllowedException):
         _test_json_schema_parsing_with_string(test_string, SomeSchema.schema(), True)
-    
+
+
+def test_single_quote_must_not_be_escaped():
+    class SomeSchema(BaseModel):
+        key: str
+
+    test_string = '{"key": "I\\\'m a string"}'
+    with pytest.raises(CharacterNotAllowedException):
+        _test_json_schema_parsing_with_string(test_string, SomeSchema.schema(), True)
+
 
 def test_string_length_limitation():
     class SomeSchema(BaseModel):
