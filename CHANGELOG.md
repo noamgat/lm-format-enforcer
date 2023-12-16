@@ -1,5 +1,8 @@
 # LM Format Enforcer Changelog
 
+## v0.7.3
+- Bug fixes
+
 ## v0.7.2
 - vLLM performance improvements
 - Sample notebooks don't require huggingface account anymore
