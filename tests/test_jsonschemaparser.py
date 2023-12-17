@@ -53,93 +53,93 @@ class SampleModel(BaseModel):
 
 def test_minimal():
     test_string = '{"num":1}'
-    _test_json_schema_parsing_with_string(test_string, SampleModel.schema(), True)
+    _test_json_schema_parsing_with_string(test_string, SampleModel.model_json_schema(), True)
 
 def test_parsing_test_model():
     test_string = '{"num":1,"dec":1.1,"message":"ok","list_of_strings":["a","b","c"],"inner_dict":{"a":{"list_of_ints":[1,2,3]}}}'
-    _test_json_schema_parsing_with_string(test_string, SampleModel.schema(), True)
+    _test_json_schema_parsing_with_string(test_string, SampleModel.model_json_schema(), True)
 
 
 def test_invalid_key_in_json_string():
     test_string = '{"numa":1,"dec":1.1,"message":"ok","list_of_strings":["a","b","c"],"inner_dict":{"a":{"list_of_ints":[1,2,3]}}}'
-    _test_json_schema_parsing_with_string(test_string, SampleModel.schema(), False)
+    _test_json_schema_parsing_with_string(test_string, SampleModel.model_json_schema(), False)
 
 
 def test_incomplete_json():
     # Intentionally missing closing }
     test_string = '{"num":1,"dec":1.1,"message":"ok","list_of_strings":["a","b","c"],"inner_dict":{"a":{"list_of_ints":[1,2,3]}}'
-    _test_json_schema_parsing_with_string(test_string, SampleModel.schema(), False)
+    _test_json_schema_parsing_with_string(test_string, SampleModel.model_json_schema(), False)
 
 
 def test_invalid_value_type_in_json_string():
     test_string = '{"num:"1","dec":1.1,"message":"ok","list_of_strings":["a","b","c"],"inner_dict":{"a":{"list_of_ints":[1,2,3]}}}'
-    _test_json_schema_parsing_with_string(test_string, SampleModel.schema(), False)
+    _test_json_schema_parsing_with_string(test_string, SampleModel.model_json_schema(), False)
 
 
 def test_list_of_objects():
     test_string = '{"list_of_models":[{"list_of_ints":[1,2,3]},{"list_of_ints":[4,5,6]}],"num":1}'
-    _test_json_schema_parsing_with_string(test_string, SampleModel.schema(), True)
+    _test_json_schema_parsing_with_string(test_string, SampleModel.model_json_schema(), True)
     test_string = '{"list_of_models": [{"list_of_ints":[1, 2, 3]} , {"list_of_ints":[4,5,6]}],"num":1}'
-    _test_json_schema_parsing_with_string(test_string, SampleModel.schema(), True)
+    _test_json_schema_parsing_with_string(test_string, SampleModel.model_json_schema(), True)
 
 
 def test_simple_dict():
     test_string = '{"simple_dict":{"a":1,"b":2,"c":3},"num":1}'
-    _test_json_schema_parsing_with_string(test_string, SampleModel.schema(), True)
+    _test_json_schema_parsing_with_string(test_string, SampleModel.model_json_schema(), True)
 
 
 def test_int_enum():
     test_string = '{"enum":4,"num":1}'
-    _test_json_schema_parsing_with_string(test_string, SampleModel.schema(), True)
+    _test_json_schema_parsing_with_string(test_string, SampleModel.model_json_schema(), True)
 
 
 def test_invalid_int_enum_value():
     test_string = '{"enum":5,"num":1}'
-    _test_json_schema_parsing_with_string(test_string, SampleModel.schema(), False)
+    _test_json_schema_parsing_with_string(test_string, SampleModel.model_json_schema(), False)
 
 
 def test_str_enum():
     test_string = '{"enum_dict":{"a":"One","b":"Two","c":"Three","d":"Four"},"num":1}'
-    _test_json_schema_parsing_with_string(test_string, SampleModel.schema(), True)
+    _test_json_schema_parsing_with_string(test_string, SampleModel.model_json_schema(), True)
 
 
 def test_invalid_str_enum_value():
     test_string = '{"enum_dict":{"a":"Onee"},"num":1}'
-    _test_json_schema_parsing_with_string(test_string, SampleModel.schema(), False)
+    _test_json_schema_parsing_with_string(test_string, SampleModel.model_json_schema(), False)
 
 
 def test_whitespaces():
     test_string = '{ "message": "","num":1}'
-    _test_json_schema_parsing_with_string(test_string, SampleModel.schema(), True)
+    _test_json_schema_parsing_with_string(test_string, SampleModel.model_json_schema(), True)
 
 
 def test_whitespace_before_number():
     test_string = '{"num": 1, "dec": 1.1}'
-    _test_json_schema_parsing_with_string(test_string, SampleModel.schema(), True)
+    _test_json_schema_parsing_with_string(test_string, SampleModel.model_json_schema(), True)
 
 
 def test_whitespace_before_close():
     test_string = '{"num":1 }'
-    _test_json_schema_parsing_with_string(test_string, SampleModel.schema(), True)    
+    _test_json_schema_parsing_with_string(test_string, SampleModel.model_json_schema(), True)    
 
 
 def test_required_field():
     test_string = '{"dec": 1.1}'  # num is a required field, doesn't exist, should fail.
-    _test_json_schema_parsing_with_string(test_string, SampleModel.schema(), False)
+    _test_json_schema_parsing_with_string(test_string, SampleModel.model_json_schema(), False)
 
 
 def test_boolean_field():
-    _test_json_schema_parsing_with_string('{"num":1,"true_or_false":false}', SampleModel.schema(), True)
-    _test_json_schema_parsing_with_string('{"num":1,"true_or_false":true}', SampleModel.schema(), True)
-    _test_json_schema_parsing_with_string('{"num":1,"true_or_false": true}', SampleModel.schema(), True)
-    _test_json_schema_parsing_with_string('{"num":1,"true_or_false":falsy}', SampleModel.schema(), False)
+    _test_json_schema_parsing_with_string('{"num":1,"true_or_false":false}', SampleModel.model_json_schema(), True)
+    _test_json_schema_parsing_with_string('{"num":1,"true_or_false":true}', SampleModel.model_json_schema(), True)
+    _test_json_schema_parsing_with_string('{"num":1,"true_or_false": true}', SampleModel.model_json_schema(), True)
+    _test_json_schema_parsing_with_string('{"num":1,"true_or_false":falsy}', SampleModel.model_json_schema(), False)
 
 def test_unspecified_dict():
     class DictModel(BaseModel):
         num: int
         d: dict
 
-    _test_json_schema_parsing_with_string('{"num":1,"d":{"k":"v"}}', DictModel.schema(), True)
+    _test_json_schema_parsing_with_string('{"num":1,"d":{"k":"v"}}', DictModel.model_json_schema(), True)
 
 
 def test_unspecified_list():
@@ -147,63 +147,63 @@ def test_unspecified_list():
         num: int
         l: list
 
-    _test_json_schema_parsing_with_string('{"num":1,"l":[1,2,3,"b"]}', DictModel.schema(), True)
+    _test_json_schema_parsing_with_string('{"num":1,"l":[1,2,3,"b"]}', DictModel.model_json_schema(), True)
 
 
 def test_list_length_limitations():
     # list_of_strings is defined as having a min length of 2 and a max length of 3
     no_strings = '{"num":1,"list_of_strings":[]}'
-    _test_json_schema_parsing_with_string(no_strings, SampleModel.schema(), False)
+    _test_json_schema_parsing_with_string(no_strings, SampleModel.model_json_schema(), False)
     one_string = '{"num":1,"list_of_strings":["a"]}'
-    _test_json_schema_parsing_with_string(one_string, SampleModel.schema(), False)
+    _test_json_schema_parsing_with_string(one_string, SampleModel.model_json_schema(), False)
     two_strings = '{"num":1,"list_of_strings":["a", "b"]}'
-    _test_json_schema_parsing_with_string(two_strings, SampleModel.schema(), True)
+    _test_json_schema_parsing_with_string(two_strings, SampleModel.model_json_schema(), True)
     three_strings = '{"num":1,"list_of_strings":["a","b","c"]}'
-    _test_json_schema_parsing_with_string(three_strings, SampleModel.schema(), True)
+    _test_json_schema_parsing_with_string(three_strings, SampleModel.model_json_schema(), True)
     four_strings = '{"num":1,"list_of_strings":["a","b","c","d"]}'
-    _test_json_schema_parsing_with_string(four_strings, SampleModel.schema(), False)
+    _test_json_schema_parsing_with_string(four_strings, SampleModel.model_json_schema(), False)
 
     class EmptyListOKModel(BaseModel):
         num: int
         list_of_strings: Optional[List[str]] = Field(None, min_length=0, max_length=1)
-    _test_json_schema_parsing_with_string(no_strings, EmptyListOKModel.schema(), True)
-    _test_json_schema_parsing_with_string(one_string, EmptyListOKModel.schema(), True)
-    _test_json_schema_parsing_with_string(two_strings, EmptyListOKModel.schema(), False)
+    _test_json_schema_parsing_with_string(no_strings, EmptyListOKModel.model_json_schema(), True)
+    _test_json_schema_parsing_with_string(one_string, EmptyListOKModel.model_json_schema(), True)
+    _test_json_schema_parsing_with_string(two_strings, EmptyListOKModel.model_json_schema(), False)
 
     class ListOfExactlyOneModel(BaseModel):
         num: int
         list_of_strings: Optional[List[str]] = Field(None, min_length=1, max_length=1)
-    _test_json_schema_parsing_with_string(no_strings, ListOfExactlyOneModel.schema(), False)
-    _test_json_schema_parsing_with_string(one_string, ListOfExactlyOneModel.schema(), True)
-    _test_json_schema_parsing_with_string(two_strings, ListOfExactlyOneModel.schema(), False)
+    _test_json_schema_parsing_with_string(no_strings, ListOfExactlyOneModel.model_json_schema(), False)
+    _test_json_schema_parsing_with_string(one_string, ListOfExactlyOneModel.model_json_schema(), True)
+    _test_json_schema_parsing_with_string(two_strings, ListOfExactlyOneModel.model_json_schema(), False)
 
     class ListOfNoMinLengthModel(BaseModel):
         num: int
         list_of_strings: Optional[List[str]] = Field(None, max_length=1)
-    _test_json_schema_parsing_with_string(no_strings, ListOfNoMinLengthModel.schema(), True)
-    _test_json_schema_parsing_with_string(one_string, ListOfNoMinLengthModel.schema(), True)
-    _test_json_schema_parsing_with_string(two_strings, ListOfNoMinLengthModel.schema(), False)
+    _test_json_schema_parsing_with_string(no_strings, ListOfNoMinLengthModel.model_json_schema(), True)
+    _test_json_schema_parsing_with_string(one_string, ListOfNoMinLengthModel.model_json_schema(), True)
+    _test_json_schema_parsing_with_string(two_strings, ListOfNoMinLengthModel.model_json_schema(), False)
 
 
 def test_string_escaping():
     for escaping_character in BACKSLASH_ESCAPING_CHARACTERS:
         test_string = f'{{"num":1,"message":"hello {BACKSLASH}{escaping_character} world"}}'
-        _test_json_schema_parsing_with_string(test_string, SampleModel.schema(), True)
+        _test_json_schema_parsing_with_string(test_string, SampleModel.model_json_schema(), True)
     for non_escaping_character in 'a1?':
         test_string = f'{{"num":1,"message":"hello {BACKSLASH}{non_escaping_character} world"}}'
-        _test_json_schema_parsing_with_string(test_string, SampleModel.schema(), False)
+        _test_json_schema_parsing_with_string(test_string, SampleModel.model_json_schema(), False)
 
     # Unicode
     test_string = f'{{"num":1,"message":"hello {BACKSLASH}uf9f0 world"}}'
-    _test_json_schema_parsing_with_string(test_string, SampleModel.schema(), True)
+    _test_json_schema_parsing_with_string(test_string, SampleModel.model_json_schema(), True)
 
     # Not enough unicode digits
     test_string = f'{{"num":1,"message":"hello {BACKSLASH}uf9f world"}}'
-    _test_json_schema_parsing_with_string(test_string, SampleModel.schema(), False)
+    _test_json_schema_parsing_with_string(test_string, SampleModel.model_json_schema(), False)
 
     # Unicode digit outside of hex range
     test_string = f'{{"num":1,"message":"hello {BACKSLASH}uf9fP world"}}'
-    _test_json_schema_parsing_with_string(test_string, SampleModel.schema(), False)
+    _test_json_schema_parsing_with_string(test_string, SampleModel.model_json_schema(), False)
 
 
 def test_comma_after_all_object_keys_fails():
@@ -212,7 +212,7 @@ def test_comma_after_all_object_keys_fails():
 
     test_string = '{"key": "val",'
     with pytest.raises(CharacterNotAllowedException):
-        _test_json_schema_parsing_with_string(test_string, SomeSchema.schema(), True)
+        _test_json_schema_parsing_with_string(test_string, SomeSchema.model_json_schema(), True)
 
 
 def test_single_quote_must_not_be_escaped():
@@ -221,7 +221,7 @@ def test_single_quote_must_not_be_escaped():
 
     test_string = '{"key": "I\\\'m a string"}'
     with pytest.raises(CharacterNotAllowedException):
-        _test_json_schema_parsing_with_string(test_string, SomeSchema.schema(), True)
+        _test_json_schema_parsing_with_string(test_string, SomeSchema.model_json_schema(), True)
 
 
 def test_string_length_limitation():
@@ -233,7 +233,7 @@ def test_string_length_limitation():
     for str_length in range(10):
         test_string = f'{{"key": "{str_length * "a"}"}}'
         expect_sucess = 2 <= str_length <= 3
-        _test_json_schema_parsing_with_string(test_string, SomeSchema.schema(), expect_sucess)
+        _test_json_schema_parsing_with_string(test_string, SomeSchema.model_json_schema(), expect_sucess)
 
 
 def test_any_json_object():
@@ -263,7 +263,43 @@ def test_union():
     class SchemaWithUnion(BaseModel):
         key: Union[int, str]
 
-    _test_json_schema_parsing_with_string('{"key": 1}', SchemaWithUnion.schema(), True)
-    _test_json_schema_parsing_with_string('{"key": "a"}', SchemaWithUnion.schema(), True)
-    _test_json_schema_parsing_with_string('{"key": 1.2}', SchemaWithUnion.schema(), False)
-    _test_json_schema_parsing_with_string('{"key": false}', SchemaWithUnion.schema(), False)
+    _test_json_schema_parsing_with_string('{"key": 1}', SchemaWithUnion.model_json_schema(), True)
+    _test_json_schema_parsing_with_string('{"key": "a"}', SchemaWithUnion.model_json_schema(), True)
+    _test_json_schema_parsing_with_string('{"key": 1.2}', SchemaWithUnion.model_json_schema(), False)
+    _test_json_schema_parsing_with_string('{"key": false}', SchemaWithUnion.model_json_schema(), False)
+
+
+class StringConstraints(BaseModel):
+    min_5: Optional[str] = Field(None, min_length=5)
+    max_8: Optional[str] = Field(None, max_length=8)
+    max_16: Optional[str] = Field(None, max_length=16)
+    min_8_max_8: Optional[str] = Field(None, min_length=8, max_length=8)
+    min_4_max_6: Optional[str] = Field(None, min_length=4, max_length=6)
+
+
+def test_more_string_constraints():
+    for str_length in range(20):
+        test_string = f'{{"min_4_max_6": "{str_length * "#"}"}}'
+        expect_sucess = 4 <= str_length <= 6
+        print(test_string, expect_sucess)
+        _test_json_schema_parsing_with_string(test_string, StringConstraints.model_json_schema(), expect_sucess)
+
+    for k,v in {
+        'min_5': ['test5', 'test567'],
+        'max_8': ['test5678', 'test56'],
+        'max_16': ['123test??0123456', r'1\n\"'],
+        'min_8_max_8': ['12t, t78', r'##\\n####'],
+        'min_4_max_6': ['12_4', '12_4:5']
+    }.items():
+        for val in v:
+            print(val)
+            _test_json_schema_parsing_with_string(f'{{"{k}": "{val}"}}', StringConstraints.model_json_schema(), True)
+
+    for k,v in {
+        'min_5': 'test',
+        'max_8': 'te\nst',
+        'max_16': '123test89-1 34567',
+        'min_8_max_8': '12test7"',
+        'min_4_max_6': '12_'
+    }.items():
+        _test_json_schema_parsing_with_string(f'{{"{k}": "{v}"}}', StringConstraints.model_json_schema(), False)

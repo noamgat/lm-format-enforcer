@@ -31,12 +31,12 @@ class CharacterLevelParser(abc.ABC):
         """Return True if the parser is in a state where it can end (potentially finished parsing the desired structure), and False otherwise."""
         raise NotImplementedError()
     
-    def shortcut_key(self) -> Optional[str]:
-        """Optional. Return a string that denotes that this state is a repeating state, full tree traversal should be avoided."""
+    def shortcut_key(self) -> Optional[Hashable]:
+        """Optional. Return a key that denotes that this state is a repeating state, full tree traversal should be avoided."""
         return None
     
     def cache_key(self) -> Optional[Hashable]:
-        """Optional. Return a string that denotes that this state is a repeating state, and if it is visited again, results can be cached."""
+        """Optional. Return a key that denotes that this state is a repeating state, and if it is visited again, results can be cached."""
         return None
     
     @property
