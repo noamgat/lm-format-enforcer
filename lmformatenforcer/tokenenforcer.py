@@ -12,23 +12,23 @@ class TokenEnforcer:
     It is the main entry point for extending lm-format-enforcer to new inference libraries. See __init__() and get_allowed_tokens()"""
     @dataclass
     class OutputTensorState:
-        str_so_far: str
         parser: CharacterLevelParser
         allowed_tokens: List[int] = field(default_factory=list)
+        current_word_tokens: List[int] = field(default_factory=list)
 
-    def __init__(self, regular_tokens: List[Tuple[int, str]], 
+    def __init__(self, regular_tokens: List[Tuple[int, str, bool]], 
                  parser: CharacterLevelParser,
                  decoder: Callable[[List[int]], str],
                  eos_token_id: int):
         """
         Create a new TokenEnforcer.
-        :param regular_tokens: A list of tuples (token_id, token_string) for all the regular (not special) tokens in the tokenizer vocabulary.
+        :param regular_tokens: A list of tuples (token_id, token_string, is_new_word_token) for all the regular (not special) tokens in the tokenizer vocabulary.
         Note that token_string is expected to include leading / trailing whitespaces if relevant.
         :param parser: A CharacterLevelParser that defines the allowed strings.
         :param decoder: A function that decodes a list of token ids into a string.
         :param eos_token_id: The token id of the end-of-string token.
         """
-        self.prefix_states: Dict[Hashable, TokenEnforcer.OutputTensorState] = {}
+        self.prefix_states: Dict[Tuple, TokenEnforcer.OutputTensorState] = {}
         self.root_parser = parser
         self.tokenizer_tree = TokenizerPrefixTree(regular_tokens)
         self.decoder = decoder
@@ -57,20 +57,19 @@ class TokenEnforcer:
         elif prev_step_tuple not in self.prefix_states:
             # We have not encountered the tensor up to the before-last entry. This means that this is the first call - the instruction / prompt tensor.
             # Initialize the root node
-            state = TokenEnforcer.OutputTensorState(str_so_far=self.decoder(token_sequence),
-                                                    parser=self.root_parser)
+            state = TokenEnforcer.OutputTensorState(parser=self.root_parser)
             self.prefix_states[sent_tuple] = state
-            self._compute_allowed_tokens(state)
+            self._compute_allowed_tokens(sent_tuple, state)
             return state.allowed_tokens
         else:
             # Find the state that led to this node. We explicitly don't use the concept of "timestep" because of beam search        
             prev_step_state = self.prefix_states[prev_step_tuple]
             new_state = self._apply_new_characters(prev_step_state, token_sequence)
             self.prefix_states[sent_tuple] = new_state
-            self._compute_allowed_tokens(new_state)
+            self._compute_allowed_tokens(sent_tuple, new_state)
             return new_state.allowed_tokens
 
-    def _compute_allowed_tokens(self, state: 'TokenEnforcer.OutputTensorState'):
+    def _compute_allowed_tokens(self, state_tokens: Tuple, state: 'TokenEnforcer.OutputTensorState'):
         try:
             allowed_tokens: List[int] = []
             cache_key = state.parser.cache_key()
@@ -94,9 +93,8 @@ class TokenEnforcer:
             raise
         except Exception:
             # Other exceptions are potential bugs and should be reported
-            root_state = next(state for state in self.prefix_states.values() if state.parser == self.root_parser)
-            characters_in_root_node = state.str_so_far[len(root_state.str_so_far):]
-            logging.exception(f"Unknown LMFormatEnforcer Problem. Prefix: '{characters_in_root_node}'\n"
+            prefix = self.decoder(list(state_tokens))
+            logging.exception(f"Unknown LMFormatEnforcer Problem. Prefix: '{prefix}'\n"
                               "Terminating the parser. Please open an issue at \n"
                               "https://github.com/noamgat/lm-format-enforcer/issues with the prefix and "
                               "CharacterLevelParser parameters")
@@ -122,9 +120,16 @@ class TokenEnforcer:
             self._collect_allowed_tokens(next_parser, next_tree_node, allowed_tokens, None)
             
     def _apply_new_characters(self, state: 'TokenEnforcer.OutputTensorState', token_sequence: List[int]):
-        characters = self.decoder(token_sequence)
-        new_state = TokenEnforcer.OutputTensorState(str_so_far=characters, parser=state.parser)
-        new_characters = characters[len(state.str_so_far):]
+        new_state = TokenEnforcer.OutputTensorState(parser=state.parser)
+        new_token = token_sequence[-1]
+        if new_token in self.tokenizer_tree.new_word_tokens:
+            new_state.current_word_tokens = [new_token]
+            new_characters = self.tokenizer_tree.tokens_to_strs[new_token]
+        else:
+            new_state.current_word_tokens = state.current_word_tokens + [new_token]
+            prev_decoded = self.decoder(state.current_word_tokens)
+            new_decoded = self.decoder(new_state.current_word_tokens)
+            new_characters = new_decoded[len(prev_decoded):]
         for character in new_characters:
             if character in new_state.parser.get_allowed_characters():
                 new_state.parser = new_state.parser.add_character(character)

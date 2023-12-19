@@ -1,4 +1,4 @@
-from typing import Dict, List, Tuple
+from typing import Dict, List, Set, Tuple
 import json
 
 class TokenizerPrefixTreeNode:
@@ -8,10 +8,12 @@ class TokenizerPrefixTreeNode:
 
 
 class TokenizerPrefixTree:
-    def __init__(self, regular_tokens: List[Tuple[int, str]]):
+    def __init__(self, regular_tokens: List[Tuple[int, str, bool]]):
         self.root = TokenizerPrefixTreeNode()
         self.json_freetext_tokens: List[int] = []
-        for token_idx, decoded in regular_tokens:
+        self.new_word_tokens: Set[int] = set()
+        self.tokens_to_strs = {token_idx: token_str for token_idx, token_str, _ in regular_tokens}
+        for token_idx, decoded, is_new_word in regular_tokens:
             self._add_token_to_tree(decoded, token_idx, self.root)
             # Performance optimization - cache the tokens of all the strings that don't contain a quote in the middle, or a line break.
             # When we are in a JSON freetext string field, they will all be permitted and this will save a lot of tree iterations.
@@ -27,6 +29,8 @@ class TokenizerPrefixTree:
                     except json.decoder.JSONDecodeError:
                         continue
                 self.json_freetext_tokens.append(token_idx)
+            if is_new_word:
+                self.new_word_tokens.add(token_idx)
 
     def _add_token_to_tree(self, token_str: str, token_idx: int, node: TokenizerPrefixTreeNode):
         for character in token_str:
