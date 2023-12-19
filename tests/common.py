@@ -1,3 +1,5 @@
+import cProfile
+from pstats import Stats
 from typing import Optional
 from transformers import AutoTokenizer, PreTrainedTokenizerBase
 
@@ -34,7 +36,7 @@ def assert_parser_with_string_direct(string: str, parser: CharacterLevelParser, 
         raise ValueError("Parser did not reach end state when it should have")
     
 
-def assert_parser_with_string_token_enforcer(string: str, parser: CharacterLevelParser, expect_success: bool):
+def assert_parser_with_string_token_enforcer(string: str, parser: CharacterLevelParser, expect_success: bool, profile_file_path: Optional[str]):
     global _tokenizer
     if _tokenizer is None:
         model_id = 'TheBloke/Llama-2-7b-Chat-GPTQ'
@@ -56,6 +58,11 @@ def assert_parser_with_string_token_enforcer(string: str, parser: CharacterLevel
     # The token enforcer is stateful - it keeps track of the parsing state as tokens arrive on a token by token basis.
     # We simulate a language model that "chooses" the next token in the encoded sequence, and check that it is in the
     # allowed list at every timestep.
+    profiler: Optional[cProfile.Profile] = None
+    if profile_file_path:
+        profiler = cProfile.Profile()
+        profiler.enable()
+
     for prefix_length in range(len(initial_token_array), len(target_token_array) + 1):
         prefix = target_token_array[:prefix_length]
         allowed_tokens = token_enforcer.get_allowed_tokens(prefix)
@@ -65,9 +72,9 @@ def assert_parser_with_string_token_enforcer(string: str, parser: CharacterLevel
                 if expect_success:
                     decoded_before = _tokenizer.decode(prefix, skip_special_tokens=True)
                     decoded_after = _tokenizer.decode(prefix + [next_token], skip_special_tokens=True)
-                    next_char = decoded_after[len(decoded_before)]
+                    next_token_chars = decoded_after[len(decoded_before):]
                     next_idx = len(decoded_before) - len(prompt)
-                    raise CharacterNotAllowedException(f"Parser does not allow '{next_char}' at index {next_idx}")
+                    raise CharacterNotAllowedException(f"Parser does not allow '{next_token_chars}' at index {next_idx}")
                 else:
                     return  # Test success
         else:
@@ -77,8 +84,17 @@ def assert_parser_with_string_token_enforcer(string: str, parser: CharacterLevel
                 raise ValueError("Parser succeeded when it should have failed")
             if not can_end and expect_success:
                 raise ValueError("Parser did not reach end state when it should have")
+            
+    if profiler and profile_file_path:
+        profiler.disable()
+        with open(profile_file_path, 'w') as stream:
+            stats = Stats(profiler, stream=stream)
+            stats.strip_dirs()
+            stats.sort_stats('time')
+            stats.dump_stats(profile_file_path + '.prof_stats')
+            stats.print_stats()
         
     
-def assert_parser_with_string(string: str, parser: CharacterLevelParser, expect_success: bool):
+def assert_parser_with_string(string: str, parser: CharacterLevelParser, expect_success: bool, profile_file_path: Optional[str] = None):
     assert_parser_with_string_direct(string, parser, expect_success)
-    assert_parser_with_string_token_enforcer(string, parser, expect_success)
+    assert_parser_with_string_token_enforcer(string, parser, expect_success, profile_file_path)
