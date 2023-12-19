@@ -7,7 +7,7 @@ import numpy as np
 import numpy.typing as npt
 from typing import Tuple, List
 
-def _build_regular_tokens_list(llm: Llama) -> List[Tuple[int, str]]:
+def _build_regular_tokens_list(llm: Llama) -> List[Tuple[int, str, bool]]:
     token_0 = llm.tokenize(b"0")[-1]
     regular_tokens = []
     special_tokens = [llm.token_bos(), llm.token_eos()]
@@ -16,8 +16,10 @@ def _build_regular_tokens_list(llm: Llama) -> List[Tuple[int, str]]:
             continue
         # We prepend token 0 and skip the first letter of the result to get a space if the token is a start word.
         try:
-            decoded = llm.detokenize([token_0, token_idx]).decode('utf-8')[1:]
-            regular_tokens.append((token_idx, decoded))
+            decoded_after_0 = llm.detokenize([token_0, token_idx]).decode('utf-8')[1:]
+            decoded_regular = llm.detokenize([token_idx]).decode('utf-8')
+            is_word_start_token = len(decoded_after_0) > len(decoded_regular)
+            regular_tokens.append((token_idx, decoded_after_0, is_word_start_token))
         except:
             # This can happen for cases such as raw bytes outside of the ASCII range. We assign this a value of �,
             # which is what huggingface does for tokens that are meaningless on their own. Allowing this in the
@@ -55,7 +57,7 @@ def build_llamacpp_logits_processor(llm: Llama, character_level_parser: Characte
         try:
             return llm.detokenize(sent).decode('utf-8')
         except:
-            return decoder(sent[:-1]) + '�'
+            return decoder(sent[:-1])
     token_enforcer = TokenEnforcer(regular_tokens, character_level_parser, decoder, llm.token_eos())
     return LlamaCppLogitsProcessor(token_enforcer, analyze)
 

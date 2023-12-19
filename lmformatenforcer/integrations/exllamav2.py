@@ -9,7 +9,7 @@ from ..characterlevelparser import CharacterLevelParser
 from ..tokenenforcer import TokenEnforcer
 
 
-def _build_regular_tokens_list(tokenizer: ExLlamaV2Tokenizer) -> List[Tuple[int, str]]:
+def _build_regular_tokens_list(tokenizer: ExLlamaV2Tokenizer) -> List[Tuple[int, str, bool]]:
     token_0 = tokenizer.encode("0")[0]
     regular_tokens = []
     vocab_size = tokenizer.tokenizer.vocab_size()
@@ -18,9 +18,11 @@ def _build_regular_tokens_list(tokenizer: ExLlamaV2Tokenizer) -> List[Tuple[int,
         if token_idx in all_special_ids:
             continue
         # We prepend token 0 and skip the first letter of the result to get a space if the token is a start word.
-        tensor = torch.tensor(token_0.tolist() + [token_idx], dtype=torch.long)
-        decoded = tokenizer.decode(tensor)[1:]
-        regular_tokens.append((token_idx, decoded))
+        tensor_after_0 = torch.tensor(token_0.tolist() + [token_idx], dtype=torch.long)
+        decoded_after_0 = tokenizer.decode(tensor_after_0)[1:]
+        decoded_regular = tokenizer.decode(token_0)
+        is_word_start_token = len(decoded_after_0) > len(decoded_regular)
+        regular_tokens.append((token_idx, decoded_after_0, is_word_start_token))
     return regular_tokens
 
 
