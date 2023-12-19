@@ -9,9 +9,9 @@ from lmformatenforcer.consts import BACKSLASH, BACKSLASH_ESCAPING_CHARACTERS
 from .common import assert_parser_with_string, CharacterNotAllowedException
 
 
-def _test_json_schema_parsing_with_string(string: str, schema_dict: Optional[dict], expect_success: bool):
+def _test_json_schema_parsing_with_string(string: str, schema_dict: Optional[dict], expect_success: bool, profile_file_path: Optional[str] = None):
     parser = JsonSchemaParser(schema_dict)
-    assert_parser_with_string(string, parser, expect_success)
+    assert_parser_with_string(string, parser, expect_success, profile_file_path)
     if expect_success:
         # If expecting success, also check minified and pretty-printed
         minified = json.dumps(json.loads(string), separators=(',', ':'))
@@ -241,6 +241,22 @@ def test_any_json_object():
     _test_json_schema_parsing_with_string('{"a": 1, "b": 2.2, "c": "c", "d": [1,2,3, null], "e": {"ee": 2}}', None, True)
     _test_json_schema_parsing_with_string("true", None, True)
     _test_json_schema_parsing_with_string('"str"', None, True)
+
+
+def test_long_json_object():
+    from urllib.request import urlopen
+    import json
+    json_url = 'https://microsoftedge.github.io/Demos/json-dummy-data/64KB.json'
+    json_text = urlopen(json_url).read().decode('utf-8')
+    # These are several "hacks" on top of the json file in order to bypass some shortcomings of the unit testing method.
+    json_text = ''.join(c for c in json_text if 0 < ord(c) < 127)
+    json_text = json_text.replace('.",', '",')
+    json_text = json_text.replace(' ",', '",')
+    json_text = json_text.replace('.",', '",')
+    json_text = json.dumps(json.loads(json_text)[:20])
+
+    profile_file_path = None  # '64KB.prof' 
+    _test_json_schema_parsing_with_string(json_text, None, True, profile_file_path=profile_file_path)
 
 
 def test_union():

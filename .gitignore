@@ -147,3 +147,5 @@ cython_debug/
 # Mac OS
 .DS_Store
 poetry.lock
+*.prof
+*.prof_stats
