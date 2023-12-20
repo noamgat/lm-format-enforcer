@@ -7,6 +7,26 @@ from .characterlevelparser import CharacterLevelParser, ForceStopParser, Charact
 from .tokenizerprefixtree import TokenizerPrefixTree, TokenizerPrefixTreeNode
 
 
+class TokenEnforcerTokenizerData:
+    """TokenEnforcerTokenizerData contains all of the preprocessing for preparing the TokenEnforcer to work with a 
+    specific tokenizer. It does some calculations, so it is recommended to reuse it for multiple TokenEnforcers"""
+    def __init__(self, 
+                 regular_tokens: List[Tuple[int, str, bool]], 
+                 decoder: Callable[[List[int]], str],
+                 eos_token_id: int):
+        """
+        Create the tokenizer data that the TokenEnforcer needs. This can be reused for multiple TokenEnforcers if they work with the same tokenizer.
+        :param regular_tokens: A list of tuples (token_id, token_string, is_new_word_token) for all the regular (not special) tokens in the tokenizer vocabulary.
+        Note that token_string is expected to include leading / trailing whitespaces if relevant.
+        :param decoder: A function that decodes a list of token ids into a string.
+        :param eos_token_id: The token id of the end-of-string token.
+        """
+        self.tokenizer_tree = TokenizerPrefixTree(regular_tokens)
+        self.decoder = decoder
+        self.eos_token_id = eos_token_id
+        self.tokenizer_alphabet = "".join(token_str for token_str in self.tokenizer_tree.root.children.keys() if len(token_str) == 1)
+
+
 class TokenEnforcer:
     """TokenEnforcer provides a token filtering mechanism, given a CharacterLevelParser and some information about the tokenizer.
     It is the main entry point for extending lm-format-enforcer to new inference libraries. See __init__() and get_allowed_tokens()"""
@@ -16,27 +36,20 @@ class TokenEnforcer:
         allowed_tokens: List[int] = field(default_factory=list)
         current_word_tokens: List[int] = field(default_factory=list)
 
-    def __init__(self, regular_tokens: List[Tuple[int, str, bool]], 
-                 parser: CharacterLevelParser,
-                 decoder: Callable[[List[int]], str],
-                 eos_token_id: int):
+    def __init__(self, tokenizer_data: TokenEnforcerTokenizerData, parser: CharacterLevelParser):
         """
         Create a new TokenEnforcer.
-        :param regular_tokens: A list of tuples (token_id, token_string, is_new_word_token) for all the regular (not special) tokens in the tokenizer vocabulary.
-        Note that token_string is expected to include leading / trailing whitespaces if relevant.
+        :param tokenizer_data: Per tokenizer data that the token enforcer needs in order to operate.
         :param parser: A CharacterLevelParser that defines the allowed strings.
-        :param decoder: A function that decodes a list of token ids into a string.
-        :param eos_token_id: The token id of the end-of-string token.
         """
         self.prefix_states: Dict[Tuple, TokenEnforcer.OutputTensorState] = {}
         self.root_parser = parser
-        self.tokenizer_tree = TokenizerPrefixTree(regular_tokens)
-        self.decoder = decoder
-        self.eos_token_id = eos_token_id
+        self.tokenizer_tree = tokenizer_data.tokenizer_tree
+        self.decoder = tokenizer_data.decoder
+        self.eos_token_id = tokenizer_data.eos_token_id
         self.allowed_token_cache: Dict[Hashable, List[int]] = {}
-        self.regular_tokens = regular_tokens
-        tokenizer_alphabet = "".join(token_str for token_str in self.tokenizer_tree.root.children.keys() if len(token_str) == 1)
-        config = CharacterLevelParserConfig(alphabet=tokenizer_alphabet)
+        
+        config = CharacterLevelParserConfig(alphabet=tokenizer_data.tokenizer_alphabet)
         parser.config = config
 
     def get_allowed_tokens(self, token_sequence: List[int]) -> List[int]:

@@ -5,11 +5,12 @@ from transformers import AutoTokenizer, PreTrainedTokenizerBase
 
 from lmformatenforcer import CharacterLevelParser
 from lmformatenforcer.exceptions import LMFormatEnforcerException
-from lmformatenforcer.tokenenforcer import TokenEnforcer
-from lmformatenforcer.integrations.transformers import build_regular_tokens_list
+from lmformatenforcer.tokenenforcer import TokenEnforcer, TokenEnforcerTokenizerData
+from lmformatenforcer.integrations.transformers import build_token_enforcer_tokenizer_data
 
 
 _tokenizer: Optional[PreTrainedTokenizerBase] = None
+_tokenizer_data: Optional[TokenEnforcerTokenizerData] = None
 
 
 class CharacterNotAllowedException(LMFormatEnforcerException):
@@ -41,6 +42,10 @@ def assert_parser_with_string_token_enforcer(string: str, parser: CharacterLevel
     if _tokenizer is None:
         model_id = 'TheBloke/Llama-2-7b-Chat-GPTQ'
         _tokenizer = AutoTokenizer.from_pretrained(model_id)
+
+    global _tokenizer_data
+    if _tokenizer_data is None:
+        _tokenizer_data = build_token_enforcer_tokenizer_data(_tokenizer)
         
     prompt = "This is my question:\n\n"
     initial_token_array = _tokenizer.encode(prompt)
@@ -49,19 +54,17 @@ def assert_parser_with_string_token_enforcer(string: str, parser: CharacterLevel
     # take the shortest path, which is the most likely to be taken by the LM, and the one that challenges
     # the parser the most.
     target_token_array = _tokenizer.encode(prompt + string)
-    regular_tokens = build_regular_tokens_list(_tokenizer)
     eos_token_id = _tokenizer.eos_token_id
     if eos_token_id is None:
         raise ValueError("Tokenizer does not have an EOS token")
     
-    token_enforcer = TokenEnforcer(regular_tokens, parser, _tokenizer.decode, eos_token_id)
+    token_enforcer = TokenEnforcer(_tokenizer_data, parser)
     # The token enforcer is stateful - it keeps track of the parsing state as tokens arrive on a token by token basis.
     # We simulate a language model that "chooses" the next token in the encoded sequence, and check that it is in the
     # allowed list at every timestep.
     profiler: Optional[cProfile.Profile] = None
     if profile_file_path:
-        profiler = cProfile.Profile()
-        profiler.enable()
+        profiler = start_profiling()
 
     for prefix_length in range(len(initial_token_array), len(target_token_array) + 1):
         prefix = target_token_array[:prefix_length]
@@ -86,15 +89,24 @@ def assert_parser_with_string_token_enforcer(string: str, parser: CharacterLevel
                 raise ValueError("Parser did not reach end state when it should have")
             
     if profiler and profile_file_path:
-        profiler.disable()
-        with open(profile_file_path, 'w') as stream:
-            stats = Stats(profiler, stream=stream)
-            stats.strip_dirs()
-            stats.sort_stats('time')
-            stats.dump_stats(profile_file_path + '.prof_stats')
-            stats.print_stats()
+        finish_profiling(profiler, profile_file_path)
         
     
 def assert_parser_with_string(string: str, parser: CharacterLevelParser, expect_success: bool, profile_file_path: Optional[str] = None):
     assert_parser_with_string_direct(string, parser, expect_success)
     assert_parser_with_string_token_enforcer(string, parser, expect_success, profile_file_path)
+
+
+def start_profiling() -> cProfile.Profile:
+    profiler = cProfile.Profile()
+    profiler.enable()
+    return profiler
+
+def finish_profiling(profiler: cProfile.Profile, profile_file_path: str):
+    profiler.disable()
+    with open(profile_file_path, 'w') as stream:
+        stats = Stats(profiler, stream=stream)
+        stats.strip_dirs()
+        stats.sort_stats('time')
+        stats.dump_stats(profile_file_path + '.prof_stats')
+        stats.print_stats()

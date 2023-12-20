@@ -3,11 +3,11 @@ from lmformatenforcer import RegexParser, CharacterLevelParserConfig
 from lmformatenforcer.consts import COMPLETE_ALPHABET
 from .common import assert_parser_with_string
 
-def _test_regex_parsing_with_string(string: str, regex: str, expect_success: bool, custom_alphabet: Optional[str] = None):
+def _test_regex_parsing_with_string(string: str, regex: str, expect_success: bool, custom_alphabet: Optional[str] = None, profile_file_path: Optional[str] = None):
     parser = RegexParser(regex)
     if custom_alphabet:
         parser.config = CharacterLevelParserConfig(alphabet=custom_alphabet)
-    assert_parser_with_string(string, parser, expect_success)
+    assert_parser_with_string(string, parser, expect_success, profile_file_path=profile_file_path)
 
 
 def test_parsing_exact_string():
@@ -57,13 +57,14 @@ def test_parsing_repeat():
         
 
 def test_any_character():
-    for num_repeats in range(20):
-        for character in '0123abcd':
-            expect_success = num_repeats > 0
-            _test_regex_parsing_with_string(
-                string=f'ab{character * num_repeats}123', 
-                regex='ab.+123', 
-                expect_success=expect_success)
+    for num_repeats, character in enumerate('0123456789abcdefghij'):
+        expect_success = num_repeats > 0
+        _test_regex_parsing_with_string(
+            string=f'ab{character * num_repeats}123', 
+            regex='ab.+123', 
+            expect_success=expect_success,
+            #profile_file_path=f'RegexAny{num_repeats}.prof')
+            profile_file_path=None)
 
 
 def test_dates():

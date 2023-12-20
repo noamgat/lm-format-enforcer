@@ -5,14 +5,15 @@ __all__ = ['CharacterLevelParser',
            'UnionParser',
            'SequenceParser',
            'JsonSchemaParser',
-           'TokenEnforcer', 
+           'TokenEnforcer',
+           'TokenEnforcerTokenizerData',
            'LMFormatEnforcerException',
            'FormatEnforcerAnalyzer',]
 
 from .characterlevelparser import CharacterLevelParser, CharacterLevelParserConfig, StringParser, UnionParser, SequenceParser
 from .regexparser import RegexParser
 from .jsonschemaparser import JsonSchemaParser
-from .tokenenforcer import TokenEnforcer
+from .tokenenforcer import TokenEnforcer, TokenEnforcerTokenizerData
 from .exceptions import LMFormatEnforcerException
 try:
     from .analyzer import FormatEnforcerAnalyzer
