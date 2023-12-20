@@ -95,7 +95,7 @@ def build_transformers_prefix_allowed_tokens_fn(tokenizer_data: Union[PreTrained
 
 
 def generate_enforced(model: AutoModelForCausalLM, 
-                      tokenizer: PreTrainedTokenizerBase, 
+                      tokenizer: Union[PreTrainedTokenizerBase, TokenEnforcerTokenizerData], 
                       character_level_parser: CharacterLevelParser, 
                       **kwargs: dict) -> Union[str, dict]:
     """Generate text from a model while enforcing a given format, generating enforcing diagnostic information. 

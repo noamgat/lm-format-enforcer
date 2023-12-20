@@ -25,7 +25,7 @@ def _build_regular_tokens_list(llm: Llama) -> List[Tuple[int, str, bool]]:
             # which is what huggingface does for tokens that are meaningless on their own. Allowing this in the
             # json_freetext field will allow the language model to build unicode sequences from multiple tokens
             # in JSON-freetext fields.
-            regular_tokens.append((token_idx, '�'))
+            regular_tokens.append((token_idx, '�', False))
     return regular_tokens
 
 

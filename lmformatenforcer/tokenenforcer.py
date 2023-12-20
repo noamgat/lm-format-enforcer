@@ -21,6 +21,7 @@ class TokenEnforcerTokenizerData:
         :param decoder: A function that decodes a list of token ids into a string.
         :param eos_token_id: The token id of the end-of-string token.
         """
+        self.regular_tokens = regular_tokens
         self.tokenizer_tree = TokenizerPrefixTree(regular_tokens)
         self.decoder = decoder
         self.eos_token_id = eos_token_id
@@ -47,6 +48,7 @@ class TokenEnforcer:
         self.tokenizer_tree = tokenizer_data.tokenizer_tree
         self.decoder = tokenizer_data.decoder
         self.eos_token_id = tokenizer_data.eos_token_id
+        self.regular_tokens = tokenizer_data.regular_tokens
         self.allowed_token_cache: Dict[Hashable, List[int]] = {}
         
         config = CharacterLevelParserConfig(alphabet=tokenizer_data.tokenizer_alphabet)

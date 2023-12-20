@@ -40,7 +40,7 @@ class FormatEnforcerAnalyzer:
         original_indices = softmax_logits.argmax(axis=1) # n_tokens
         original_scores = _select_array(softmax_logits, original_indices) # n_tokens
         
-        single_token_dict: Dict[int, str] = dict(self.token_enforcer.regular_tokens)
+        single_token_dict: Dict[int, str] = {token_id: token_str for token_id, token_str, _ in self.token_enforcer.regular_tokens}
         def single_token_decoder(token_id: int) -> str:
             if token_id in single_token_dict:
                 return single_token_dict[token_id]
