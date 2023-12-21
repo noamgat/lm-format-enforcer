@@ -42,13 +42,13 @@ class RegexParser(CharacterLevelParser):
             symbol = anything_else
         transition = fsm.alphabet[symbol]
 
-        # Missing transition = transition to dead state
-        if not (state in fsm.map and transition in fsm.map[state]):
+        try:
+            # Prefer try-catch to checking if transition exists to avoid double lookup perf hit in valid case
+            state = fsm.map[state][transition]  # type: ignore
+            return RegexParser(self.context, self.config, state)
+        except KeyError:
+            # Missing transition = transition to dead state
             return RegexParser(self.context, self.config, RegexParser.INVALID_STATE)
-
-        state = fsm.map[state][transition]
-
-        return RegexParser(self.context, self.config, state)
     
     def can_end(self) -> bool:
         return self.current_state in self.context.pattern.finals
