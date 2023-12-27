@@ -9,6 +9,13 @@ class TokenizerPrefixTreeNode:
 
 
 class JsonFreetextTokenCache:
+    """
+    JSON string can contain almost any unicode character, so creating a list of allowed tokens is very expensive.
+    The list can be cached, but JSON Schema also allows 'minLength' and 'maxLength' constraint on the string,
+    that make some tokens illegal depending on how long the generated string is already. This class precalculates
+    a separate allowlist for all possible constraint states up to maximum token length (16 in Llama, for example).
+    After deduplication, this results in about ~75 lists for the Llama tokenizer.
+    """
     def __init__(self, ) -> None:
         self.token_str_to_num: Dict[str, int] = {}
         self.allowlist_cache: Dict[Tuple[int, int], Tuple[int, ...]] = {}
@@ -17,6 +24,16 @@ class JsonFreetextTokenCache:
 
     def add_token(self, token_str: str, token_int: int):
         assert not self.allowlist_cache, "Cannot add more tokens after allowlists were precalculated"
+
+        has_non_trailing_backslash = "\\" in token_str[:-1]
+        has_quote_before_end = '"' in token_str[0:-1]
+        has_newline = "\n" in token_str or "\r" in token_str
+        if has_non_trailing_backslash or has_quote_before_end or has_newline:
+            try:
+                json.loads(f'"{token_str}"')
+            except json.decoder.JSONDecodeError:
+                return  # Illegal inside JSON string, skip this token
+
         self.token_str_to_num[token_str] = token_int
         self.max_token_len = max(self.max_token_len, len(token_str))
 
@@ -47,9 +64,8 @@ class JsonFreetextTokenCache:
 
         # Make a 2D array of constrained allowlists, indexed by tuple `(min_remaining, max_len)`
         token_lists = {}
-        max_token_len = max(len(token) for token in all_tokens)
-        for min_remaining in range(max_token_len + 1):
-            for max_len in range(max_token_len + 1):
+        for min_remaining in range(self.max_token_len + 1):
+            for max_len in range(self.max_token_len + 1):
                 if max_len >= min_remaining:  # Skip combinations that are never used
                     token_lists[(min_remaining, max_len)] = tuple(sorted([
                         token for token in all_tokens
@@ -80,20 +96,7 @@ class TokenizerPrefixTree:
         self.tokens_to_strs = {token_idx: token_str for token_idx, token_str, _ in regular_tokens}
         for token_idx, decoded, is_new_word in regular_tokens:
             self._add_token_to_tree(decoded, token_idx, self.root)
-
-            # Performance optimization - cache the tokens of all the strings that don't contain a quote in the middle, or a line break.
-            # When we are in a JSON freetext string field, they will all be permitted and this will save a lot of tree iterations.
-            has_non_trailing_backslash = '\\' in decoded[:-1]
-            has_quote_before_end = '"' in decoded[0:-1]
-            has_newline = "\n" in decoded or "\r" in decoded
-            if has_non_trailing_backslash or has_quote_before_end or has_newline:  # Could be illegal inside a JSON string, test it
-                try:
-                    json.loads(f'"{decoded}"')
-                except json.decoder.JSONDecodeError:
-                    continue
-
             self.json_freetext_tokens.add_token(decoded, token_idx)
-
             if is_new_word:
                 self.new_word_tokens.add(token_idx)
 

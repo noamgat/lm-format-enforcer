@@ -126,7 +126,7 @@ class TokenEnforcer:
         # Performance optimization: If we are in JSON freetext, all of the tokens that don't contain quote, or end with quote, are legal, so we take
         # their cached list. If the quote character is allowed, we only need to dynamically explore the cases where the string starts with a quote.
         # This breaks the elegance of the API, but otherwise it is a huge performance hit.
-        if type(shortcut_key) is tuple and shortcut_key[0] == 'json_freetext':
+        if isinstance(shortcut_key, tuple) and shortcut_key[0] == 'json_freetext':
             assert len(shortcut_key) == 4
             _, cur_len, min_len, max_len = shortcut_key
             cache = self.tokenizer_tree.json_freetext_tokens
