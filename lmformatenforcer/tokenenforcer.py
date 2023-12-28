@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+import sys
 from typing import Callable, Dict, Hashable, List, Optional, Tuple
 import logging
 
@@ -115,7 +116,7 @@ class TokenEnforcer:
                               "CharacterLevelParser parameters")
             state.allowed_tokens = [self.eos_token_id]
 
-    def _collect_allowed_tokens(self, parser: CharacterLevelParser, tree_node: TokenizerPrefixTreeNode, allowed_tokens: List[int], shortcut_key: Optional[str]):
+    def _collect_allowed_tokens(self, parser: CharacterLevelParser, tree_node: TokenizerPrefixTreeNode, allowed_tokens: List[int], shortcut_key: Optional[Hashable]):
         allowed_tokens.extend(tree_node.tokens)
         allowed_characters = parser.get_allowed_characters()
         relevant_characters = tree_node.children.keys()
@@ -125,12 +126,19 @@ class TokenEnforcer:
         # Performance optimization: If we are in JSON freetext, all of the tokens that don't contain quote, or end with quote, are legal, so we take
         # their cached list. If the quote character is allowed, we only need to dynamically explore the cases where the string starts with a quote.
         # This breaks the elegance of the API, but otherwise it is a huge performance hit.
-        if shortcut_key == 'json_freetext':
-            allowed_tokens.extend(self.tokenizer_tree.json_freetext_tokens)
+        if isinstance(shortcut_key, tuple) and shortcut_key[0] == 'json_freetext':
+            assert len(shortcut_key) == 4
+            _, cur_len, min_len, max_len = shortcut_key
+            cache = self.tokenizer_tree.json_freetext_tokens
+
+            min_remaining = min(cache.max_token_len, max(0, min_len - cur_len))  # no " allowed before this many chars
+            max_allowed_len = min(cache.max_token_len, max_len - cur_len)  # max new characters allowed (before ")
+
+            allowed_tokens.extend(cache.lookup_allowed_tokens(min_remaining, max_allowed_len))
             characters_to_explore = characters_to_explore.intersection(['"'])
 
         for character in characters_to_explore:
-            next_parser = parser.add_character(character )
+            next_parser = parser.add_character(character)
             next_tree_node = tree_node.children[character]
             self._collect_allowed_tokens(next_parser, next_tree_node, allowed_tokens, None)
             
@@ -155,4 +163,3 @@ class TokenEnforcer:
         return new_state
         
 
-    

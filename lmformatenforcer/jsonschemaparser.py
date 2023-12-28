@@ -1,6 +1,7 @@
 from copy import deepcopy
 import enum
-from typing import Any, List, Optional, Union, cast
+import sys
+from typing import Hashable, List, Optional, Union, cast
 
 
 from .external.jsonschemaobject import JsonSchemaObject, json_schema_data_formats
@@ -97,16 +98,20 @@ class JsonSchemaParser(CharacterLevelParser):
     def can_end(self) -> bool:
         return all(parser.can_end() for parser in self.object_stack)
 
-    def shortcut_key(self) -> Optional[str]:
+    def shortcut_key(self) -> Optional[Hashable]:
         if self.object_stack:
             current_parser = self.object_stack[-1]
             if isinstance(current_parser, StringParsingState):
-                if not current_parser.allowed_strings and current_parser.seen_opening_quote and not current_parser.seen_closing_quote \
-                    and current_parser.min_length is None and current_parser.max_length is None:
+                if not current_parser.allowed_strings and current_parser.seen_opening_quote and not current_parser.seen_closing_quote:
                     # Performance optimization: When we are parsing a string that is not from a list of allowed strings, most tokens
                     # are legal. The exploration can be more costly than the LM itself for large tokenizers (because this is pure python),
                     # so we signal that we are in a "freetext" mode, and reuse the allowed token list throughout the run.
-                    return 'json_freetext'
+                    cur_len = len(current_parser.parsed_string)
+                    min_len = current_parser.min_length or 0
+                    max_len = current_parser.max_length or sys.maxsize
+                    assert min_len <= max_len, "Invalid schema for str: min length is larger than max length"
+                    if cur_len < max_len:
+                        return ('json_freetext', cur_len, min_len, max_len)
         return None
 
 
