@@ -1,5 +1,8 @@
 # LM Format Enforcer Changelog
 
+## v0.8.1
+- Performannce improvement: Limited-length JSON strings will also enjoy caching. Thanks [Jarno Elonen](https://github.com/elonen) for the contribution!
+
 ## v0.8.0
  - Performance improvement: Introduced `TokenEnforcerTokenizerData` that allows reusing the tokenizer preprocessing data between different `TokenEnforcer` instances. The sample notebooks have been updated to take advantage of this option.
  - Performance improvement: Long sequences will see up to 5x `TokenEnforcer` runtime footprint reduction.
