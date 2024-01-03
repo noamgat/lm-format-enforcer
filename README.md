@@ -162,3 +162,8 @@ You can see that the model "wanted" to start the answer using ```Sure```, but th
 - LM Format Enforcer requires a python API to process the output logits of the language model. This means that until the APIs are extended, it can not be used with OpenAI ChatGPT and similar API based solutions.
 - Regular expression syntax is not 100% supported. See [interegular](https://pypi.org/project/interegular/) for more details.
 - LM Format Enforcer Regex Parser can only generate characters that exist in the tokenizer vocabulary. This may be solved in a later version, see [the issue on GitHub](https://github.com/noamgat/lm-format-enforcer/issues/13).
+
+
+## Contributers and contributing
+
+See [CONTRIBUTORS.md](https://github.com/noamgat/lm-format-enforcer/blob/main/CONTRIBUTORS.md) for a list of contributers.
