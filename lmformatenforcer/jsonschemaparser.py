@@ -1,14 +1,14 @@
 from copy import deepcopy
 import enum
 import sys
-from typing import Hashable, List, Optional, Union, cast
+from typing import Dict, Hashable, List, Optional, Union, cast
 
 
 from .external.jsonschemaobject import JsonSchemaObject, json_schema_data_formats
 from .exceptions import LMFormatEnforcerException
 from .characterlevelparser import CharacterLevelParser, CharacterLevelParserConfig, ForceStopParser, SequenceParser, StringParser, UnionParser
 from .consts import BACKSLASH, BACKSLASH_ESCAPING_CHARACTERS, MAX_CONSECUTIVE_WHITESPACES, WHITESPACE_CHARACTERS
-
+from .regexparser import RegexParser
 
 _ANY_JSON_SCHEMA_DICT = {'anyOf': [{'type': type} for type in json_schema_data_formats.keys()]}
 
@@ -20,6 +20,7 @@ class JsonSchemaParser(CharacterLevelParser):
         # to which parser's stack to add.
         active_parser: "JsonSchemaParser"
         alphabet_without_quotes: str
+        regex_parser_cache: Dict[str, RegexParser] = {}
 
     object_stack: List[CharacterLevelParser]
     context: _Context
@@ -136,6 +137,7 @@ def get_parser(
             require_opening_quote=True,
             min_length=value_schema.minLength,
             max_length=value_schema.maxLength,
+            pattern=value_schema.pattern,
         )
     elif value_schema.type == "object":
         return ObjectParsingState(value_schema, parsing_state)
@@ -410,6 +412,8 @@ class StringParsingState(PrimitiveParsingState):
     seen_opening_quote: bool
     min_length: Optional[int]
     max_length: Optional[int]
+    pattern: Optional[str]
+    regex_parser: Optional[RegexParser]
 
     def __init__(
         self,
@@ -419,6 +423,8 @@ class StringParsingState(PrimitiveParsingState):
         require_closing_quote: bool = True,
         min_length: Optional[int]=None,
         max_length: Optional[int]=None,
+        pattern: Optional[str]=None,
+        regex_parser: Optional[RegexParser]=None,
     ):
         super().__init__(root)
         self.allowed_strings = allowed_strings
@@ -428,6 +434,15 @@ class StringParsingState(PrimitiveParsingState):
         self.require_opening_quote = require_opening_quote
         self.min_length = min_length
         self.max_length = max_length
+        self.pattern = pattern
+        if self.pattern and (self.min_length or self.max_length):
+            raise LMFormatEnforcerException("String schema contains both a pattern and a min/max length, which is not currently supported")
+        self.regex_parser = regex_parser
+        if self.pattern and not regex_parser:
+            if self.pattern not in self.root.context.regex_parser_cache:
+                self.root.context.regex_parser_cache[self.pattern] = RegexParser(self.pattern, self.root.config)
+            self.regex_parser = self.root.context.regex_parser_cache[self.pattern]
+
 
     def _clone(self) -> "StringParsingState":
         clone = StringParsingState(
@@ -436,7 +451,8 @@ class StringParsingState(PrimitiveParsingState):
             self.require_opening_quote,
             self.require_closing_quote,
             self.min_length,
-            self.max_length
+            self.max_length,
+            self.pattern
         )
         clone.parsed_string = self.parsed_string
         clone.seen_closing_quote = self.seen_closing_quote
@@ -454,6 +470,8 @@ class StringParsingState(PrimitiveParsingState):
             else:
                 self.seen_closing_quote = True
                 self.parsed_string = self.parsed_string[:-1]
+        if self.regex_parser and new_character != '"' and self.seen_opening_quote and not self.seen_closing_quote:
+            self.regex_parser = self.regex_parser.add_character(new_character)
         if new_character == BACKSLASH:
             # After a backslack we immediately have the escaping character, and if its 'u', we have 4 hex digits
             escaping_character_parsers: List[CharacterLevelParser] = [StringParser(c) for c in BACKSLASH_ESCAPING_CHARACTERS]
@@ -469,6 +487,13 @@ class StringParsingState(PrimitiveParsingState):
             return '"' + WHITESPACE_CHARACTERS
         if self.seen_closing_quote:
             return WHITESPACE_CHARACTERS
+        if self.regex_parser:
+            regex_chars = self.regex_parser.get_allowed_characters()
+            # We don't currently support regexes with quotes or escaping backslashes, so we remove them from the allowed characters
+            regex_chars = regex_chars.replace('"', '').replace(BACKSLASH, '')
+            if self.regex_parser.can_end():
+                regex_chars += '"'
+            return regex_chars
         if self.allowed_strings:
             allowed_continuations = [
                 s[len(self.parsed_string) :]

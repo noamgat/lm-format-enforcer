@@ -303,3 +303,11 @@ def test_more_string_constraints():
         'min_4_max_6': '12_'
     }.items():
         _test_json_schema_parsing_with_string(f'{{"{k}": "{v}"}}', StringConstraints.model_json_schema(), False)
+
+
+def test_string_pattern_requirement():
+    class SchemaWithPattern(BaseModel):
+        str_field: str = Field(pattern=r"[ab]+")
+
+    _test_json_schema_parsing_with_string('{"str_field": "ababab"}', SchemaWithPattern.model_json_schema(), True)
+    _test_json_schema_parsing_with_string('{"str_field": "abc"}', SchemaWithPattern.model_json_schema(), False)
