@@ -34,6 +34,11 @@ class JsonFreetextTokenCache:
             except json.decoder.JSONDecodeError:
                 return  # Illegal inside JSON string, skip this token
 
+        if len(token_str) == 0:
+            # Tokens that don't decode to anything should be ignored, will not be allowed in json freetext fields.
+            # TODO: Should we instead ALWAYS allow them?
+            return
+
         self.token_str_to_num[token_str] = token_int
         self.max_token_len = max(self.max_token_len, len(token_str))
 
