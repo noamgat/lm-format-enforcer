@@ -1,5 +1,11 @@
 # LM Format Enforcer Changelog
 
+## v0.8.2
+Several `JsonSchemaParser` improvements:
+- [#32](https://github.com/noamgat/lm-format-enforcer/issues/32) Added limited support for regex-constrained string in JSON using the `pattern` field. See `test_phone_number_in_string()`.
+- [#54](https://github.com/noamgat/lm-format-enforcer/issues/54) Fixed regression bug caused by limited-length JSON string caching.
+- [#53](https://github.com/noamgat/lm-format-enforcer/issues/53) Fixed problems with arrays of union types. 
+
 ## v0.8.1
 - Performannce improvement: Limited-length JSON strings will also enjoy caching. Thanks [Jarno Elonen](https://github.com/elonen) for the contribution!
 
