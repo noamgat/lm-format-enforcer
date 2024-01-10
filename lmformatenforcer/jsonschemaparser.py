@@ -103,7 +103,7 @@ class JsonSchemaParser(CharacterLevelParser):
         if self.object_stack:
             current_parser = self.object_stack[-1]
             if isinstance(current_parser, StringParsingState):
-                if not current_parser.allowed_strings and current_parser.seen_opening_quote and not current_parser.seen_closing_quote:
+                if not current_parser.allowed_strings and current_parser.seen_opening_quote and not current_parser.seen_closing_quote and not current_parser.regex_parser:
                     # Performance optimization: When we are parsing a string that is not from a list of allowed strings, most tokens
                     # are legal. The exploration can be more costly than the LM itself for large tokenizers (because this is pure python),
                     # so we signal that we are in a "freetext" mode, and reuse the allowed token list throughout the run.
