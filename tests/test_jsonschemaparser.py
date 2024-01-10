@@ -305,6 +305,23 @@ def test_more_string_constraints():
         _test_json_schema_parsing_with_string(f'{{"{k}": "{v}"}}', StringConstraints.model_json_schema(), False)
 
 
+def test_string_pattern_requirement():
+    class SchemaWithPattern(BaseModel):
+        str_field: str = Field(pattern=r"[ab]+")
+
+    _test_json_schema_parsing_with_string('{"str_field": "ababab"}', SchemaWithPattern.model_json_schema(), True)
+    _test_json_schema_parsing_with_string('{"str_field": "abc"}', SchemaWithPattern.model_json_schema(), False)
+
+
+def test_phone_number_in_string():
+    class ContactInfo(BaseModel):
+        name: str
+        # phone: str 
+        phone: str = Field(pattern=r"\([0-9]{3}\)[0-9]{3}-[0-9]{4}")
+    _test_json_schema_parsing_with_string('{"name": "John", "phone": "(312)011-2444"}', ContactInfo.model_json_schema(), True)
+    _test_json_schema_parsing_with_string('{"name": "John", "phone": "312-011-2444"}', ContactInfo.model_json_schema(), False)
+
+
 def test_union_typed_arrays():
     class AppleSchema(BaseModel):
         apple_type: int

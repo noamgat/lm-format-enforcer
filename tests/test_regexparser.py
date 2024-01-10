@@ -89,3 +89,8 @@ def test_increasing_alphabet():
     _test_regex_parsing_with_string('abΣ', any_regex, False)
     custom_alphabet = COMPLETE_ALPHABET + 'Σ'
     _test_regex_parsing_with_string('abΣ', any_regex, True, custom_alphabet=custom_alphabet)
+
+def test_phone_number():
+    phone_regex = r"\([0-9]{3}\)[0-9]{3}-[0-9]{4}"
+    _test_regex_parsing_with_string('(312)011-2444', phone_regex, True)
+    _test_regex_parsing_with_string('312-011-2444', phone_regex, False)
