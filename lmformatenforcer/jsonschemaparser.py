@@ -452,7 +452,8 @@ class StringParsingState(PrimitiveParsingState):
             self.require_closing_quote,
             self.min_length,
             self.max_length,
-            self.pattern
+            self.pattern,
+            self.regex_parser
         )
         clone.parsed_string = self.parsed_string
         clone.seen_closing_quote = self.seen_closing_quote
