@@ -312,6 +312,7 @@ def test_string_pattern_requirement():
     _test_json_schema_parsing_with_string('{"str_field": "ababab"}', SchemaWithPattern.model_json_schema(), True)
     _test_json_schema_parsing_with_string('{"str_field": "abc"}', SchemaWithPattern.model_json_schema(), False)
 
+
 def test_phone_number_in_string():
     class ContactInfo(BaseModel):
         name: str
@@ -319,3 +320,18 @@ def test_phone_number_in_string():
         phone: str = Field(pattern=r"\([0-9]{3}\)[0-9]{3}-[0-9]{4}")
     _test_json_schema_parsing_with_string('{"name": "John", "phone": "(312)011-2444"}', ContactInfo.model_json_schema(), True)
     _test_json_schema_parsing_with_string('{"name": "John", "phone": "312-011-2444"}', ContactInfo.model_json_schema(), False)
+
+
+def test_union_typed_arrays():
+    class AppleSchema(BaseModel):
+        apple_type: int
+
+    class BananaSchema(BaseModel):
+        is_ripe: bool
+
+    class FruitsSchema(BaseModel):
+        fruits: List[Union[AppleSchema, BananaSchema]]
+
+    _test_json_schema_parsing_with_string('{"fruits": [{"apple_type": 1}, {"apple_type": 2}] }', FruitsSchema.model_json_schema(), True)
+    _test_json_schema_parsing_with_string('{"fruits": [{"apple_type": 1}, {"is_ripe": true}] }', FruitsSchema.model_json_schema(), True)
+    _test_json_schema_parsing_with_string('{"fruits": [{"apple_type": 1, "is_ripe": true}] }', FruitsSchema.model_json_schema(), False)
