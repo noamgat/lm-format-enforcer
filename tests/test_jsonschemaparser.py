@@ -72,7 +72,7 @@ def test_incomplete_json():
 
 
 def test_invalid_value_type_in_json_string():
-    test_string = '{"num:"1","dec":1.1,"message":"ok","list_of_strings":["a","b","c"],"inner_dict":{"a":{"list_of_ints":[1,2,3]}}}'
+    test_string = '{"num":"1","dec":1.1,"message":"ok","list_of_strings":["a","b","c"],"inner_dict":{"a":{"list_of_ints":[1,2,3]}}}'
     _test_json_schema_parsing_with_string(test_string, SampleModel.model_json_schema(), False)
 
 
