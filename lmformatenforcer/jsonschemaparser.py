@@ -580,11 +580,12 @@ class ListParsingState(PrimitiveParsingState):
                 parser_to_push = item_parser
             else:
                 # If we don't require items, we can also end immediately, the Union + ForceStopParser combination achieves this
+                empty_list_parser = ForceStopParser(allow_whitespace=True)
                 if isinstance(item_parser, UnionParser):
-                    item_parser.parsers.append(ForceStopParser())
+                    item_parser.parsers.append(empty_list_parser)
                     parser_to_push = item_parser
                 else:
-                    parser_to_push = UnionParser([item_parser, ForceStopParser()])
+                    parser_to_push = UnionParser([item_parser, empty_list_parser])
             self.root.context.active_parser.object_stack.append(parser_to_push)
         elif new_character == "]":
             self.seen_list_closer = True

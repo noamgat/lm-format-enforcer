@@ -335,3 +335,12 @@ def test_union_typed_arrays():
     _test_json_schema_parsing_with_string('{"fruits": [{"apple_type": 1}, {"apple_type": 2}] }', FruitsSchema.model_json_schema(), True)
     _test_json_schema_parsing_with_string('{"fruits": [{"apple_type": 1}, {"is_ripe": true}] }', FruitsSchema.model_json_schema(), True)
     _test_json_schema_parsing_with_string('{"fruits": [{"apple_type": 1, "is_ripe": true}] }', FruitsSchema.model_json_schema(), False)
+
+
+def test_empty_list_with_newline():
+    class EmptyListOKModel(BaseModel):
+        num: int
+        list_of_strings: Optional[List[str]] = Field(None, min_length=0, max_length=1)
+    
+    no_strings = '{"num":1,"list_of_strings":[\n]}'
+    _test_json_schema_parsing_with_string(no_strings, EmptyListOKModel.model_json_schema(), True)

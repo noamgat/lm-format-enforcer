@@ -1,7 +1,7 @@
 import abc
 from dataclasses import dataclass
 from typing import Hashable, List, Optional
-from .consts import COMPLETE_ALPHABET
+from .consts import COMPLETE_ALPHABET, WHITESPACE_CHARACTERS
 
 
 @dataclass
@@ -70,10 +70,12 @@ class StringParser(CharacterLevelParser):
 
 class ForceStopParser(CharacterLevelParser):
     """A simple parser that forbids any characters except the stop token. Used to force stop LM operation"""
+    def __init__(self, allow_whitespace: bool = False):
+        self.allow_whitespace = allow_whitespace
     def add_character(self, new_character: str) -> CharacterLevelParser:
         return self
     def get_allowed_characters(self) -> str:
-        return ""
+        return WHITESPACE_CHARACTERS if self.allow_whitespace else ""
     def can_end(self) -> bool:
         return True
     
