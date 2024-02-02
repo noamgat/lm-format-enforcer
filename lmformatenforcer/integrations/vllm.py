@@ -33,6 +33,9 @@ class VLLMLogitsProcessor:
 
 def build_vllm_token_enforcer_tokenizer_data(llm: Union[vllm.LLM, PreTrainedTokenizerBase]) -> TokenEnforcerTokenizerData:
     tokenizer = llm.get_tokenizer() if isinstance(llm, vllm.LLM) else llm
+    # In some vLLM versions the tokenizer is wrapped in a TokenizerGroup
+    if tokenizer.__class__.__name__ == 'TokenizerGroup':
+        tokenizer = tokenizer.tokenizer  # noqa
     return build_token_enforcer_tokenizer_data(tokenizer)
 
 
