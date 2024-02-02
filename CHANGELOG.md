@@ -1,5 +1,9 @@
 # LM Format Enforcer Changelog
 
+## v0.8.3
+- [#67](https://github.com/noamgat/lm-format-enforcer/issues/67) Updating vLLM integration to support v0.3.0
+- [#63](https://github.com/noamgat/lm-format-enforcer/issues/63) JSONSchemaParser: Empty list cannot be closed after a newline
+
 ## v0.8.2
 Several `JsonSchemaParser` improvements:
 - [#32](https://github.com/noamgat/lm-format-enforcer/issues/32) Added limited support for regex-constrained string in JSON using the `pattern` field. See `test_phone_number_in_string()`.
