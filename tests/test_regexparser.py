@@ -94,3 +94,11 @@ def test_phone_number():
     phone_regex = r"\([0-9]{3}\)[0-9]{3}-[0-9]{4}"
     _test_regex_parsing_with_string('(312)011-2444', phone_regex, True)
     _test_regex_parsing_with_string('312-011-2444', phone_regex, False)
+
+def test_negative_matching():
+    # https://github.com/noamgat/lm-format-enforcer/issues/70
+    pattern = r'- Keywords: [^;:,/\n\r]+; [^;:,/\n\r]+; [^;:,/\n\r]+; [^;:,/\n\r]+; [^;:,/\n\r]+'
+    text = '- Keywords: intranasal vaccine, long-lasting immunity, mucosal antibody response, T cells, adjuvants'
+    _test_regex_parsing_with_string(text, pattern, False)
+    correct_text = text.replace(',', ';')
+    _test_regex_parsing_with_string(correct_text, pattern, True)
