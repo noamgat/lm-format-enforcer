@@ -20,7 +20,7 @@ class JsonFreetextTokenCache:
         self.token_str_to_num: Dict[str, int] = {}
         self.allowlist_cache: Dict[Tuple[int, int], Tuple[int, ...]] = {}
         self.max_token_len = 0
-        self.max_allowed_token_len = 32
+
 
     def add_token(self, token_str: str, token_int: int):
         assert not self.allowlist_cache, "Cannot add more tokens after allowlists were precalculated"
@@ -40,7 +40,8 @@ class JsonFreetextTokenCache:
             return
 
         self.token_str_to_num[token_str] = token_int
-        self.max_token_len = min(max(self.max_token_len, len(token_str)), self.max_allowed_token_len)
+        self.max_token_len = max(self.max_token_len, len(token_str))
+
 
     def lookup_allowed_tokens(self, min_remaining: int, max_len: int) -> Tuple[int, ...]:
         """
@@ -49,6 +50,7 @@ class JsonFreetextTokenCache:
         2. if a token ends with a quote, it's at least `min_remaining` chars long (excluding the quote).
         """
         return self.allowlist_cache[(min_remaining, max_len)]
+
 
     def freeze(self) -> None:
         """
@@ -104,6 +106,7 @@ class TokenizerPrefixTree:
                 self.new_word_tokens.add(token_idx)
 
         self.json_freetext_tokens.freeze()
+
 
     def _add_token_to_tree(self, token_str: str, token_idx: int, node: TokenizerPrefixTreeNode):
         for character in token_str:
