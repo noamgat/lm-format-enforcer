@@ -1,5 +1,5 @@
 import math
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Union
 import torch
 from transformers import PreTrainedTokenizerBase
 from lmformatenforcer import CharacterLevelParser, FormatEnforcerAnalyzer
@@ -51,12 +51,8 @@ def _build_regular_tokens_list(tokenizer) -> List[Tuple[int, str, bool]]:
     return regular_tokens
 
 
-def build_trtllm_logits_processor(tokenizer: PreTrainedTokenizerBase,
-                                  character_level_parser: CharacterLevelParser,
-                                  analyze: bool = False) -> TRTLLMLogitsProcessor:
-    """
-    Build logits processor for feeding it into generate function (use_py_session should be True)
-    """
+def build_trtlmm_tokenizer_data(tokenizer: PreTrainedTokenizerBase) -> TokenEnforcerTokenizerData:
+    """Build the TokenEnforcerTokenizerData from a tokenizer in order to cache it between instances"""
     regular_tokens = _build_regular_tokens_list(tokenizer)
 
     def _decode(tokens: List[int]) -> str:
@@ -64,5 +60,19 @@ def build_trtllm_logits_processor(tokenizer: PreTrainedTokenizerBase,
         return tokenizer.decode(tensor)
 
     tokenizer_data = TokenEnforcerTokenizerData(regular_tokens, _decode, tokenizer.eos_token_id)
+    return tokenizer_data
+
+
+def build_trtllm_logits_processor(tokenizer: Union[PreTrainedTokenizerBase, TokenEnforcerTokenizerData],
+                                  character_level_parser: CharacterLevelParser,
+                                  analyze: bool = False) -> TRTLLMLogitsProcessor:
+    """
+    Build logits processor for feeding it into generate function (use_py_session should be True)
+    """
+    if isinstance(tokenizer, TokenEnforcerTokenizerData):
+        tokenizer_data = tokenizer
+    else:
+        tokenizer_data = build_trtlmm_tokenizer_data(tokenizer)
+
     token_enforcer = TokenEnforcer(tokenizer_data, character_level_parser)
     return TRTLLMLogitsProcessor(token_enforcer, tokenizer.eos_token_id, analyze)
