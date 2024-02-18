@@ -17,9 +17,10 @@ class JsonFreetextTokenCache:
     After deduplication, this results in about ~75 lists for the Llama tokenizer.
     """
     def __init__(self, ) -> None:
-        self.token_str_to_num: Dict[str, int] = {}
+        self.token_num_to_str: Dict[int, str] = {}
         self.allowlist_cache: Dict[Tuple[int, int], Tuple[int, ...]] = {}
         self.max_token_len = 0
+        self.max_token_int = -1
         self.max_allowed_token_len = 32
 
     def add_token(self, token_str: str, token_int: int):
@@ -39,7 +40,8 @@ class JsonFreetextTokenCache:
             # TODO: Should we instead ALWAYS allow them?
             return
 
-        self.token_str_to_num[token_str] = token_int
+        self.token_num_to_str[token_int] = token_str
+        self.max_token_int = max(self.max_token_int, token_int)
         self.max_token_len = min(max(self.max_token_len, len(token_str)), self.max_allowed_token_len)
 
     def lookup_allowed_tokens(self, min_remaining: int, max_len: int) -> Tuple[int, ...]:
@@ -55,25 +57,37 @@ class JsonFreetextTokenCache:
         Precalculate token allowlists for all valid combinations of `min_remaining` and `max_len`
         based on the tokens that were added with `add_token()`.
         """
-        all_tokens: List[str] = sorted(self.token_str_to_num.keys())
+        all_tokens: List[str] = [self.token_num_to_str.get(i, None) for i in range(self.max_token_int + 1)]
         assert all_tokens, "Cannot precalculate allowlists for an empty token list"
         assert not any(t == '' for t in all_tokens), "Tokenizer must not contain empty tokens"
 
         def _valid_for_min_remaining(token, min_remaining):
-            return not token.endswith('"') or len(token.rstrip('"')) >= min_remaining
+            return token is not None and (not token.endswith('"') or len(token.rstrip('"')) >= min_remaining)
 
         def _valid_for_max_len(token, max_len):
-            return len(token.rstrip('"')) <= max_len
+            return token is not None and len(token.rstrip('"')) <= max_len
+
+        # Precalculate valid token sets
+        valid_for_min_remaining_sets = []
+        for min_remaining in range(self.max_token_len + 1):
+            valid_for_min_remaining_sets.append(set([
+                i for i in range(len(all_tokens))
+                if _valid_for_min_remaining(all_tokens[i], min_remaining)
+            ]))
+
+        valid_for_max_len_sets = []
+        for max_len in range(self.max_token_len + 1):
+            valid_for_max_len_sets.append(set([
+                i for i in range(len(all_tokens))
+                if _valid_for_max_len(all_tokens[i], max_len)
+            ]))
 
         # Make a 2D array of constrained allowlists, indexed by tuple `(min_remaining, max_len)`
         token_lists = {}
         for min_remaining in range(self.max_token_len + 1):
-            for max_len in range(self.max_token_len + 1):
-                if max_len >= min_remaining:  # Skip combinations that are never used
-                    token_lists[(min_remaining, max_len)] = tuple(sorted([
-                        token for token in all_tokens
-                        if _valid_for_min_remaining(token, min_remaining) and _valid_for_max_len(token, max_len)
-                    ]))
+            for max_len in range(min_remaining, self.max_token_len + 1):
+                ids = tuple(valid_for_min_remaining_sets[min_remaining] & valid_for_max_len_sets[max_len])
+                token_lists[(min_remaining, max_len)] = ids
 
         # Deduplicate the lists to save RAM as many of them will be identical
         unique_lists = set(token_lists.values())
@@ -83,12 +97,8 @@ class JsonFreetextTokenCache:
                     token_lists[key] = uniq
                     break
 
-        # Turn token strings into token numbers
-        self.allowlist_cache = {
-            key: tuple(self.token_str_to_num[t] for t in lst)
-            for key, lst in token_lists.items()
-        }
-        del self.token_str_to_num
+        self.allowlist_cache = token_lists
+        del self.token_num_to_str
 
 
 class TokenizerPrefixTree:
