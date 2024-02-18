@@ -24,20 +24,21 @@ class JsonFreetextTokenCache:
         def build(self, token_strs_to_idx: List[Tuple[str, int]]):
             token_strs_to_idx = sorted(token_strs_to_idx, key=lambda p:len(p[0]))
             self.tokens = [pair[1] for pair in token_strs_to_idx]
-            self.token_strs = [pair[0] for pair in token_strs_to_idx]  # For debugging
+            # self.token_strs = [pair[0] for pair in token_strs_to_idx]  # For debugging
             token_lengths = [len(pair[0]) for pair in token_strs_to_idx]
-            max_length = token_lengths[-1]
             for idx, token_length in enumerate(token_lengths):
-                while len(self.first_index_geq_than_length) < token_length:
+                while len(self.first_index_geq_than_length) <= token_length:
                     self.first_index_geq_than_length.append(idx)
-            self.first_index_geq_than_length.append(max_length)
+            self.first_index_geq_than_length.append(len(token_lengths))
 
         def get_indices_between_length(self, min_length=-1, max_length=-1) -> List[int]:
             if min_length > len(self.first_index_geq_than_length):
                 return []
             start_index = self.first_index_geq_than_length[min_length] if min_length > 0 else 0
-            if max_length > 0 and max_length + 1 < len(self.first_index_geq_than_length):
-                end_index = max_length + 1
+            if max_length == 0:
+                end_index = 0
+            elif max_length + 1 < len(self.first_index_geq_than_length):
+                end_index = self.first_index_geq_than_length[max_length + 1]
             else:
                 end_index = -1
             return self.tokens[start_index:end_index]
