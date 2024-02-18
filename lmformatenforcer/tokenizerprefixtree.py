@@ -44,7 +44,7 @@ class JsonFreetextTokenCache:
             return self.tokens[start_index:end_index]
 
     def __init__(self, ) -> None:
-        self.token_str_to_num: Dict[str, int] = {}
+        self.token_num_to_str: Dict[int, str] = {}
         self.allowlist_cache: Dict[Tuple[int, int], Tuple[int, ...]] = {}
         self.max_token_len = 0
         self.regular_tokens_length_cache = JsonFreetextTokenCache._StringLengthTokenCache()
@@ -67,7 +67,7 @@ class JsonFreetextTokenCache:
             # TODO: Should we instead ALWAYS allow them?
             return
 
-        self.token_str_to_num[token_str] = token_int
+        self.token_num_to_str[token_int] = token_str
 
     def lookup_allowed_tokens(self, min_remaining: int, max_len: int) -> Tuple[int, ...]:
         """
@@ -81,14 +81,14 @@ class JsonFreetextTokenCache:
             tokens_without_quote = self.regular_tokens_length_cache.get_indices_between_length(-1, max_len)
             combined = tokens_with_quote + tokens_without_quote
             self.allowlist_cache[cache_key] = tuple(combined)
-        return self.allowlist_cache[(min_remaining, max_len)]
+        return self.allowlist_cache[cache_key]
 
     def freeze(self) -> None:
         """
         Precalculate token allowlists for all valid combinations of `min_remaining` and `max_len`
         based on the tokens that were added with `add_token()`.
         """
-        all_tokens: List[Tuple[str, int]] = list(self.token_str_to_num.items())
+        all_tokens: List[Tuple[str, int]] = list((s, n) for n,s in self.token_num_to_str.items())
         assert all_tokens, "Cannot precalculate allowlists for an empty token list"
         assert not any(pair[0] == '' for pair in all_tokens), "Tokenizer must not contain empty tokens"
 
@@ -104,7 +104,7 @@ class JsonFreetextTokenCache:
         self.quote_tokens_length_cache.build(quote_tokens)
         self.max_token_len = max(len(self.regular_tokens_length_cache.first_index_geq_than_length), 
                                  len(self.quote_tokens_length_cache.first_index_geq_than_length))
-        del self.token_str_to_num
+        del self.token_num_to_str
 
 
 class TokenizerPrefixTree:
