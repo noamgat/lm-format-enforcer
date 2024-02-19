@@ -17,11 +17,14 @@ class JsonFreetextTokenCache:
     After deduplication, this results in about ~75 lists for the Llama tokenizer.
     """
     class _StringLengthTokenCache:
+        """This is an internal data structure, that given a list of string+token pairs,
+        can quickly return all token ids of strings between certain lengths"""
         def __init__(self):
             self.tokens: List[int] = []
             self.first_index_geq_than_length: List[int] = [0]
         
         def build(self, token_strs_to_idx: List[Tuple[str, int]]):
+            # TODO: If this becomes a performance bottleneck, bucket sort instead.
             token_strs_to_idx = sorted(token_strs_to_idx, key=lambda p:len(p[0]))
             self.tokens = [pair[1] for pair in token_strs_to_idx]
             # self.token_strs = [pair[0] for pair in token_strs_to_idx]  # For debugging
@@ -32,7 +35,7 @@ class JsonFreetextTokenCache:
             self.first_index_geq_than_length.append(len(token_lengths))
 
         def get_indices_between_length(self, min_length=-1, max_length=-1) -> List[int]:
-            if min_length > len(self.first_index_geq_than_length):
+            if min_length >= len(self.first_index_geq_than_length):
                 return []
             start_index = self.first_index_geq_than_length[min_length] if min_length > 0 else 0
             if max_length == 0:
@@ -40,7 +43,7 @@ class JsonFreetextTokenCache:
             elif max_length + 1 < len(self.first_index_geq_than_length):
                 end_index = self.first_index_geq_than_length[max_length + 1]
             else:
-                end_index = -1
+                end_index = len(self.tokens)
             return self.tokens[start_index:end_index]
 
     def __init__(self, ) -> None:
