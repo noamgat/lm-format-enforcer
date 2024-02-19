@@ -61,41 +61,47 @@ class JsonFreetextTokenCache:
         assert all_tokens, "Cannot precalculate allowlists for an empty token list"
         assert not any(t == '' for t in all_tokens), "Tokenizer must not contain empty tokens"
 
-        def _valid_for_min_remaining(token, min_remaining):
-            return token is not None and (not token.endswith('"') or len(token.rstrip('"')) >= min_remaining)
+        # Precalculate lengths
+        minvalue = -10
+        maxvalue = self.max_token_len + 10
 
-        def _valid_for_max_len(token, max_len):
-            return token is not None and len(token.rstrip('"')) <= max_len
+        all_tokens_min = [
+            minvalue if (t is None) else (maxvalue if not t.endswith('"') else len(t.rstrip('"')))
+            for t in all_tokens
+        ]
+
+        all_tokens_max = [
+            maxvalue if (t is None) else len(t.rstrip('"'))
+            for t in all_tokens
+        ]
 
         # Precalculate valid token sets
         valid_for_min_remaining_sets = []
         for min_remaining in range(self.max_token_len + 1):
             valid_for_min_remaining_sets.append(set([
                 i for i in range(len(all_tokens))
-                if _valid_for_min_remaining(all_tokens[i], min_remaining)
+                if all_tokens_min[i] >= min_remaining
             ]))
 
         valid_for_max_len_sets = []
         for max_len in range(self.max_token_len + 1):
             valid_for_max_len_sets.append(set([
                 i for i in range(len(all_tokens))
-                if _valid_for_max_len(all_tokens[i], max_len)
+                if all_tokens_max[i] <= max_len
             ]))
 
         # Make a 2D array of constrained allowlists, indexed by tuple `(min_remaining, max_len)`
+        # As many of them will be identical, avoid storing duplicate lists to save RAM
         token_lists = {}
+        unique_lists = {}
         for min_remaining in range(self.max_token_len + 1):
             for max_len in range(min_remaining, self.max_token_len + 1):
                 ids = tuple(valid_for_min_remaining_sets[min_remaining] & valid_for_max_len_sets[max_len])
-                token_lists[(min_remaining, max_len)] = ids
-
-        # Deduplicate the lists to save RAM as many of them will be identical
-        unique_lists = set(token_lists.values())
-        for key, lst in token_lists.items():
-            for uniq in unique_lists:
-                if len(uniq) == len(lst) and uniq == lst:
-                    token_lists[key] = uniq
-                    break
+                if ids in unique_lists:
+                    token_lists[(min_remaining, max_len)] = unique_lists[ids]  # Save reference
+                else:
+                    token_lists[(min_remaining, max_len)] = ids  # Save new unique set
+                    unique_lists[ids] = ids
 
         self.allowlist_cache = token_lists
         del self.token_num_to_str
