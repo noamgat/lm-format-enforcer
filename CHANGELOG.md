@@ -1,7 +1,7 @@
 # LM Format Enforcer Changelog
 
 ## v0.9.0
-- [#68](https://github.com/noamgat/lm-format-enforcer/pull/68) Added NVIDIA TensorRT-LLM Support, [Ahmet Erdem](https://github.com/aerdem4)'s contribution.
+- [#68](https://github.com/noamgat/lm-format-enforcer/pull/68) Added NVIDIA TensorRT-LLM Support, NVIDIA's contribution by [Ahmet Erdem](https://github.com/aerdem4). Thanks!
 - Much faster TokenizerData initialization, new JSON freetext token caching algorithm.
 - More robust error reporting.
 
