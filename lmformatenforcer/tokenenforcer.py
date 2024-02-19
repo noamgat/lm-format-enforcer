@@ -109,6 +109,7 @@ class TokenEnforcer:
             raise
         except Exception:
             # Other exceptions are potential bugs and should be reported
+            logging.basicConfig(level=logging.ERROR)  # Initialize if no loggers
             prefix = self.decoder(list(state_tokens))
             logging.exception(f"Unknown LMFormatEnforcer Problem. Prefix: '{prefix}'\n"
                               "Terminating the parser. Please open an issue at \n"

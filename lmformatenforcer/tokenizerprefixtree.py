@@ -16,11 +16,42 @@ class JsonFreetextTokenCache:
     a separate allowlist for all possible constraint states up to maximum token length (16 in Llama, for example).
     After deduplication, this results in about ~75 lists for the Llama tokenizer.
     """
+    class _StringLengthTokenCache:
+        """This is an internal data structure, that given a list of string+token pairs,
+        can quickly return all token ids of strings between certain lengths"""
+        def __init__(self):
+            self.tokens: List[int] = []
+            self.first_index_geq_than_length: List[int] = [0]
+        
+        def build(self, token_strs_to_idx: List[Tuple[str, int]]):
+            # TODO: If this becomes a performance bottleneck, bucket sort instead.
+            token_strs_to_idx = sorted(token_strs_to_idx, key=lambda p:len(p[0]))
+            self.tokens = [pair[1] for pair in token_strs_to_idx]
+            # self.token_strs = [pair[0] for pair in token_strs_to_idx]  # For debugging
+            token_lengths = [len(pair[0]) for pair in token_strs_to_idx]
+            for idx, token_length in enumerate(token_lengths):
+                while len(self.first_index_geq_than_length) <= token_length:
+                    self.first_index_geq_than_length.append(idx)
+            self.first_index_geq_than_length.append(len(token_lengths))
+
+        def get_indices_between_length(self, min_length=-1, max_length=-1) -> List[int]:
+            if min_length >= len(self.first_index_geq_than_length):
+                return []
+            start_index = self.first_index_geq_than_length[min_length] if min_length > 0 else 0
+            if max_length == 0:
+                end_index = 0
+            elif max_length + 1 < len(self.first_index_geq_than_length):
+                end_index = self.first_index_geq_than_length[max_length + 1]
+            else:
+                end_index = len(self.tokens)
+            return self.tokens[start_index:end_index]
+
     def __init__(self, ) -> None:
-        self.token_str_to_num: Dict[str, int] = {}
+        self.token_num_to_str: Dict[int, str] = {}
         self.allowlist_cache: Dict[Tuple[int, int], Tuple[int, ...]] = {}
         self.max_token_len = 0
-        self.max_allowed_token_len = 32
+        self.regular_tokens_length_cache = JsonFreetextTokenCache._StringLengthTokenCache()
+        self.quote_tokens_length_cache = JsonFreetextTokenCache._StringLengthTokenCache()
 
     def add_token(self, token_str: str, token_int: int):
         assert not self.allowlist_cache, "Cannot add more tokens after allowlists were precalculated"
@@ -39,8 +70,7 @@ class JsonFreetextTokenCache:
             # TODO: Should we instead ALWAYS allow them?
             return
 
-        self.token_str_to_num[token_str] = token_int
-        self.max_token_len = min(max(self.max_token_len, len(token_str)), self.max_allowed_token_len)
+        self.token_num_to_str[token_int] = token_str
 
     def lookup_allowed_tokens(self, min_remaining: int, max_len: int) -> Tuple[int, ...]:
         """
@@ -48,47 +78,36 @@ class JsonFreetextTokenCache:
         1. all candidate tokens are at most `max_len` characters long (excluding the trailing quote), and
         2. if a token ends with a quote, it's at least `min_remaining` chars long (excluding the quote).
         """
-        return self.allowlist_cache[(min_remaining, max_len)]
+        cache_key = (min_remaining, max_len)
+        if cache_key not in self.allowlist_cache:
+            tokens_with_quote = self.quote_tokens_length_cache.get_indices_between_length(min_remaining + 1, max_len + 1)
+            tokens_without_quote = self.regular_tokens_length_cache.get_indices_between_length(-1, max_len)
+            combined = tokens_with_quote + tokens_without_quote
+            self.allowlist_cache[cache_key] = tuple(combined)
+        return self.allowlist_cache[cache_key]
 
     def freeze(self) -> None:
         """
         Precalculate token allowlists for all valid combinations of `min_remaining` and `max_len`
         based on the tokens that were added with `add_token()`.
         """
-        all_tokens: List[str] = sorted(self.token_str_to_num.keys())
+        all_tokens: List[Tuple[str, int]] = list((s, n) for n,s in self.token_num_to_str.items())
         assert all_tokens, "Cannot precalculate allowlists for an empty token list"
-        assert not any(t == '' for t in all_tokens), "Tokenizer must not contain empty tokens"
+        assert not any(pair[0] == '' for pair in all_tokens), "Tokenizer must not contain empty tokens"
 
-        def _valid_for_min_remaining(token, min_remaining):
-            return not token.endswith('"') or len(token.rstrip('"')) >= min_remaining
+        regular_tokens: List[Tuple[str, int]] = []
+        quote_tokens: List[Tuple[str, int]] = []
+        for pair in all_tokens:
+            if pair[0].endswith('"'):
+                quote_tokens.append(pair)
+            else:
+                regular_tokens.append(pair)
 
-        def _valid_for_max_len(token, max_len):
-            return len(token.rstrip('"')) <= max_len
-
-        # Make a 2D array of constrained allowlists, indexed by tuple `(min_remaining, max_len)`
-        token_lists = {}
-        for min_remaining in range(self.max_token_len + 1):
-            for max_len in range(self.max_token_len + 1):
-                if max_len >= min_remaining:  # Skip combinations that are never used
-                    token_lists[(min_remaining, max_len)] = tuple(sorted([
-                        token for token in all_tokens
-                        if _valid_for_min_remaining(token, min_remaining) and _valid_for_max_len(token, max_len)
-                    ]))
-
-        # Deduplicate the lists to save RAM as many of them will be identical
-        unique_lists = set(token_lists.values())
-        for key, lst in token_lists.items():
-            for uniq in unique_lists:
-                if len(uniq) == len(lst) and uniq == lst:
-                    token_lists[key] = uniq
-                    break
-
-        # Turn token strings into token numbers
-        self.allowlist_cache = {
-            key: tuple(self.token_str_to_num[t] for t in lst)
-            for key, lst in token_lists.items()
-        }
-        del self.token_str_to_num
+        self.regular_tokens_length_cache.build(regular_tokens)
+        self.quote_tokens_length_cache.build(quote_tokens)
+        self.max_token_len = max(len(self.regular_tokens_length_cache.first_index_geq_than_length), 
+                                 len(self.quote_tokens_length_cache.first_index_geq_than_length))
+        del self.token_num_to_str
 
 
 class TokenizerPrefixTree:
