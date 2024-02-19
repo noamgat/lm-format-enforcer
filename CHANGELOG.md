@@ -1,5 +1,10 @@
 # LM Format Enforcer Changelog
 
+## v0.9.0
+- [#68](https://github.com/noamgat/lm-format-enforcer/pull/68) Added NVIDIA TensorRT-LLM Support, [Ahmet Erdem](https://github.com/aerdem4)'s contribution.
+- Much faster TokenizerData initialization, new JSON freetext token caching algorithm.
+- More robust error reporting.
+
 ## v0.8.3
 - [#67](https://github.com/noamgat/lm-format-enforcer/issues/67) Updating vLLM integration to support v0.3.0
 - [#63](https://github.com/noamgat/lm-format-enforcer/issues/63) JSONSchemaParser: Empty list cannot be closed after a newline
