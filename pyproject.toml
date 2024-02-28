@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "lm-format-enforcer"
-version = "0.9.0"
+version = "0.9.1"
 description = "Enforce the output format (JSON Schema, Regex etc) of a language model"
 authors = ["Noam Gat <noamgat@gmail.com>"]
 license = "MIT"
@@ -32,6 +32,8 @@ packages = [
 python = ">=3.8,<4.0"
 pydantic = ">=1.10.8"
 interegular = ">=0.3.2"
+packaging = "*"
+pyyaml = "*"
 
 [tool.poetry.group.dev.dependencies]
 mock = "5.1.0"
