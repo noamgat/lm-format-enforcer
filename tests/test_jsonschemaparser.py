@@ -344,3 +344,13 @@ def test_empty_list_with_newline():
     
     no_strings = '{"num":1,"list_of_strings":[\n]}'
     _test_json_schema_parsing_with_string(no_strings, EmptyListOKModel.model_json_schema(), True)
+
+
+def test_comma_cannot_start_list():
+    class FlightRoute(BaseModel):
+        airports: List[str]
+    output_notok = """ { "airports": [,"name"] } """
+    output_ok = """ { "airports": ["name"] } """
+    
+    _test_json_schema_parsing_with_string(output_ok, FlightRoute.model_json_schema(), True)
+    _test_json_schema_parsing_with_string(output_notok, FlightRoute.model_json_schema(), False)
