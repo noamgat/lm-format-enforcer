@@ -155,11 +155,11 @@ class TokenEnforcer:
             new_decoded = self.decoder(new_state.current_word_tokens)
             new_characters = new_decoded[len(prev_decoded):]
         for character in new_characters:
-            if character in new_state.parser.get_allowed_characters():
+            try:
                 new_state.parser = new_state.parser.add_character(character)
-            else:
+            except Exception as e:
                 # This can happen in beam / batch scenarios, when some of the batches finished but others are continuing.
-                logging.debug(f"Received an invalid character '{character}', switching to ForceStopParser")
+                logging.debug(f"Received an invalid character '{character}', switching to ForceStopParser (Exception:{e})")
                 new_state.parser = ForceStopParser()
         return new_state
         
