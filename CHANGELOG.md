@@ -1,9 +1,12 @@
 # LM Format Enforcer Changelog
 
+## v0.9.3
+- [#83](https://github.com/noamgat/lm-format-enforcer/pull/83) - Supporting added model tokens
+- Improved support for out-of-token-vocabulary characters
+
 ## v0.9.2
 - [#80](https://github.com/noamgat/lm-format-enforcer/issues/80) - Fixed bug where comma could start json list
 - [#34](https://github.com/noamgat/lm-format-enforcer/issues/34) - Fixed llama-cpp-python low max_tokens default in sample
-
 
 ## v0.9.1
 - Fixed build errors in certain edge cases
