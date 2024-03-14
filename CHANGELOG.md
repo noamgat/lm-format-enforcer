@@ -1,5 +1,21 @@
 # LM Format Enforcer Changelog
 
+## v0.9.3
+- [#83](https://github.com/noamgat/lm-format-enforcer/pull/83) - Supporting added model tokens
+- Improved support for out-of-token-vocabulary characters
+
+## v0.9.2
+- [#80](https://github.com/noamgat/lm-format-enforcer/issues/80) - Fixed bug where comma could start json list
+- [#34](https://github.com/noamgat/lm-format-enforcer/issues/34) - Fixed llama-cpp-python low max_tokens default in sample
+
+## v0.9.1
+- Fixed build errors in certain edge cases
+
+## v0.9.0
+- [#68](https://github.com/noamgat/lm-format-enforcer/pull/68) Added NVIDIA TensorRT-LLM Support, NVIDIA's contribution by [Ahmet Erdem](https://github.com/aerdem4). Thanks!
+- Much faster TokenizerData initialization, new JSON freetext token caching algorithm.
+- More robust error reporting.
+
 ## v0.8.3
 - [#67](https://github.com/noamgat/lm-format-enforcer/issues/67) Updating vLLM integration to support v0.3.0
 - [#63](https://github.com/noamgat/lm-format-enforcer/issues/63) JSONSchemaParser: Empty list cannot be closed after a newline

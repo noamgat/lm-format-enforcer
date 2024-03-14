@@ -615,7 +615,7 @@ class ListParsingState(PrimitiveParsingState):
     def get_allowed_control_characters(self):
         num_items = self.num_items_seen
         is_on_top = self.root.context.active_parser.object_stack[-1] == self
-        if (not is_on_top) and self.root.last_non_whitespace_character != "[":
+        if (not is_on_top) and self.root.context.active_parser.last_non_whitespace_character != "[":
             # If there is an active parser above us, and the last character is not [, 
             # there is an active item parser on the stack that we did not count yet.
             num_items += 1
@@ -623,7 +623,7 @@ class ListParsingState(PrimitiveParsingState):
         has_enough_items = self.min_items is None or num_items >= self.min_items
         can_add_another_item = self.max_items is None or num_items < self.max_items
 
-        if can_add_another_item:
+        if num_items > 0 and can_add_another_item:
             control_characters += ","
         if has_enough_items:
             control_characters += "]"

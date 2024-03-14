@@ -55,7 +55,7 @@ class LogitsSaverManager:
 def _build_regular_tokens_list(tokenizer: PreTrainedTokenizerBase) -> List[Tuple[int, str, bool]]:
     token_0 = tokenizer.encode("0")[-1]
     regular_tokens = []
-    for token_idx in range(tokenizer.vocab_size):
+    for token_idx in range(len(tokenizer)):
         if token_idx in tokenizer.all_special_ids:
             continue
         # We prepend token 0 and skip the first letter of the result to get a space if the token is a start word.
