@@ -1,5 +1,8 @@
 # LM Format Enforcer Changelog
 
+## v0.9.4
+- [#27] Improving vLLM class support (AsyncLLMEngine etc)
+
 ## v0.9.3
 - [#83](https://github.com/noamgat/lm-format-enforcer/pull/83) - Supporting added model tokens
 - Improved support for out-of-token-vocabulary characters
