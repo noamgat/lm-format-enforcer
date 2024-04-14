@@ -51,7 +51,7 @@ class RegexParser(CharacterLevelParser):
             return RegexParser(self.context, self.config, RegexParser.INVALID_STATE)
     
     def can_end(self) -> bool:
-        return self.current_state in self.context.pattern.finals
+        return self.current_state in self.context.pattern.finals or self.current_state == RegexParser.INVALID_STATE
     
     def get_allowed_characters(self) -> str:
         if self.current_state not in self.context.pattern.map:

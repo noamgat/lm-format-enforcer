@@ -31,11 +31,12 @@ class VLLMLogitsProcessor:
         return scores
 
 
-def build_vllm_token_enforcer_tokenizer_data(llm: Union[vllm.LLM, PreTrainedTokenizerBase]) -> TokenEnforcerTokenizerData:
-    tokenizer = llm.get_tokenizer() if isinstance(llm, vllm.LLM) else llm
-    # In some vLLM versions the tokenizer is wrapped in a TokenizerGroup
-    if tokenizer.__class__.__name__ == 'TokenizerGroup':
-        tokenizer = tokenizer.tokenizer  # noqa
+def build_vllm_token_enforcer_tokenizer_data(tokenizer: Union[vllm.LLM, PreTrainedTokenizerBase]) -> TokenEnforcerTokenizerData:
+    # There are many classes that can be passed here, this logic should work on all of them.
+    if hasattr(tokenizer, 'get_tokenizer'):
+        tokenizer = tokenizer.get_tokenizer()
+    if hasattr(tokenizer, 'tokenizer'):
+        tokenizer = tokenizer.tokenizer
     return build_token_enforcer_tokenizer_data(tokenizer)
 
 

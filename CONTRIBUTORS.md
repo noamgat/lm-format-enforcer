@@ -6,6 +6,7 @@
 * [Jarno Elonen](https://github.com/elonen) (Improved performance of length-limited json strings)
 * [Benedikt Fuchs](https://github.com/helpmefindaname) (Bug fixes)
 * [Ahmet Erdem](https://github.com/aerdem4) from NVIDIA (NVIDIA TensorRT-LLM support)
+* [Josh C](https://github.com/JoshC8C7) (Bug fixes)
 
 ## I would like to join this list. How can I help the project?
 
