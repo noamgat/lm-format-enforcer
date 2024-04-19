@@ -91,6 +91,12 @@ class JsonSchemaParser(CharacterLevelParser):
                 option_json_schema_parsers.append(option_parser)
             return UnionParser(option_json_schema_parsers)
 
+        # For some performance optimizations to work, we want to make sure we don't leave irrelevant
+        # objects at the top of the stack, which we know will be passed over next timestep
+        new_object_stack = updated_parser.object_stack
+        while new_object_stack and new_object_stack[-1].can_end() and new_object_stack[-1].get_allowed_characters() == '':
+            del new_object_stack[-1]
+
         return updated_parser
 
     def get_allowed_characters(self) -> str:
