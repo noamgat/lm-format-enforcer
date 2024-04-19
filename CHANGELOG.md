@@ -1,5 +1,9 @@
 # LM Format Enforcer Changelog
 
+## v0.9.6
+- [#88] ExllamaV2 optimizations
+- Bugfix in ExllamaV2 sample notebook that generated garbage data after the response.
+
 ## v0.9.5
 - [#87] Allow regex to exit to forcestopparser when receiving a pad/eos token after having been in a final state. Thanks Josh C!
 
