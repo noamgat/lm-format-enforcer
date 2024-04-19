@@ -119,8 +119,13 @@ class JsonSchemaParser(CharacterLevelParser):
         return all(parser.can_end() for parser in self.object_stack)
 
     def shortcut_key(self) -> Optional[Hashable]:
-        if self.object_stack:
-            current_parser = self.object_stack[-1]
+        current_parsers = []
+        for parser in reversed(self.object_stack):
+            current_parsers.append(parser)
+            if not parser.can_end():
+                break
+        
+        for current_parser in current_parsers:
             if isinstance(current_parser, StringParsingState):
                 if not current_parser.allowed_strings and current_parser.seen_opening_quote and not current_parser.seen_closing_quote and not current_parser.regex_parser:
                     # Performance optimization: When we are parsing a string that is not from a list of allowed strings, most tokens
