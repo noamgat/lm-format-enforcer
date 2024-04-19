@@ -122,7 +122,7 @@ class JsonSchemaParser(CharacterLevelParser):
         current_parsers = []
         for parser in reversed(self.object_stack):
             current_parsers.append(parser)
-            if not parser.can_end():
+            if not parser.can_end() or len(parser.get_allowed_characters()) > 0:
                 break
         
         for current_parser in current_parsers:
