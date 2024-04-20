@@ -9,6 +9,7 @@
 * [Josh C](https://github.com/JoshC8C7) (Bug fixes)
 * [Brian Dashore](https://github.com/bdashore3) (ExLlamaV2 improvements)
 * [turboderp](https://github.com/turboderp) (ExLlamaV2 improvements) 
+* [Ari Weinstein](https://github.com/AriX) (JSONSchemaParser performance improvements)
 
 ## I would like to join this list. How can I help the project?
 

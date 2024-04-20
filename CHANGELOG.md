@@ -1,5 +1,9 @@
 # LM Format Enforcer Changelog
 
+## v0.9.7
+- [#93] Improved JSONSchemaParser performance, unit tests run twice as fast! Joint effort with [Ari Weinstein](https://github.com/AriX). Thanks! 
+
+
 ## v0.9.6
 - [#88] ExllamaV2 optimizations
 - Bugfix in ExllamaV2 sample notebook that generated garbage data after the response.
