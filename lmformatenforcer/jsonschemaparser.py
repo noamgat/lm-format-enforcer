@@ -73,6 +73,7 @@ class JsonSchemaParser(CharacterLevelParser):
         updated_parser.object_stack[receiving_idx] = updated_parser.object_stack[receiving_idx].add_character(new_character)
         if new_character in WHITESPACE_CHARACTERS:
             updated_parser.num_consecutive_whitespaces += 1
+            updated_parser.last_non_whitespace_character = self.last_non_whitespace_character
         else:
             updated_parser.num_consecutive_whitespaces = 0
             updated_parser.last_non_whitespace_character = new_character

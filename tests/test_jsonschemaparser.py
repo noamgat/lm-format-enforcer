@@ -354,3 +354,20 @@ def test_comma_cannot_start_list():
     
     _test_json_schema_parsing_with_string(output_ok, FlightRoute.model_json_schema(), True)
     _test_json_schema_parsing_with_string(output_notok, FlightRoute.model_json_schema(), False)
+
+
+def test_comma_cannot_start_list_2():
+    # This also stresses the whitespace handling + max consecutive whitespace concept,
+    # bug reported in https://github.com/noamgat/lm-format-enforcer/issues/80
+    output_notok = """
+    {
+        "airports": [
+           ,"Hamad",
+           ",Doha",
+           ",Bahrain",
+           ",Dammam"
+        ]
+    }"""
+    class FlightRoute(BaseModel):
+        airports: List[str]
+    _test_json_schema_parsing_with_string(output_notok, FlightRoute.model_json_schema(), False)
