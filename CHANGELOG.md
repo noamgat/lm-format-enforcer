@@ -1,5 +1,9 @@
 # LM Format Enforcer Changelog
 
+## v0.9.8
+- [#80] JSONSchemaParser List would allow opening comma before first element if there was a whitespace before it
+
+
 ## v0.9.7
 - [#93] Improved JSONSchemaParser performance, unit tests run twice as fast! Joint effort with [Ari Weinstein](https://github.com/AriX). Thanks! 
 
