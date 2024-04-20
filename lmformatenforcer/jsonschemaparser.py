@@ -95,6 +95,9 @@ class JsonSchemaParser(CharacterLevelParser):
         # objects at the top of the stack, which we know will be passed over next timestep
         new_object_stack = updated_parser.object_stack
         while new_object_stack and new_object_stack[-1].can_end() and new_object_stack[-1].get_allowed_characters() == '':
+            finished_receiver = new_object_stack[-1]
+            if isinstance(finished_receiver, StringParsingState):
+                updated_parser.last_parsed_string = finished_receiver.parsed_string
             del new_object_stack[-1]
 
         return updated_parser
