@@ -101,7 +101,9 @@ LM Format Enforcer is integrated into the [vLLM](https://github.com/vllm-project
 Use LM Format Enforcer with the vLLM OpenAI Server either by adding the [vLLM command line parameter](https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html#command-line-arguments-for-the-server):
 
 ```
-python -m vllm.entrypoints.openai.api_server --model mistralai/Mistral-7B-Instruct-v0.2 --guided-decoding-backend lm-format-enforcer
+python -m vllm.entrypoints.openai.api_server \
+  --model mistralai/Mistral-7B-Instruct-v0.2 \
+  --guided-decoding-backend lm-format-enforcer
  ```
 
 Or on a per-request basis, by adding the `guided_decoding_backend` parameter to the request together with the guided decoding parameters:
