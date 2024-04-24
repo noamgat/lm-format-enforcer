@@ -1,5 +1,8 @@
 # LM Format Enforcer Changelog
 
+## v0.9.9
+- Updated README with vLLM OpenAI Server Inference integration
+
 ## v0.9.8
 - [#80] JSONSchemaParser List would allow opening comma before first element if there was a whitespace before it
 

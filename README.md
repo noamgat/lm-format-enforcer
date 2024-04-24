@@ -94,6 +94,30 @@ You can also [view the notebook in GitHub](https://github.com/noamgat/lm-format-
 
 For the different ways to integrate with huggingface transformers, see the [unit tests](https://github.com/noamgat/lm-format-enforcer/blob/main/tests/test_transformerenforcer.py).
 
+## vLLM Server Integration
+
+LM Format Enforcer is integrated into the [vLLM](https://github.com/vllm-project/vllm) inference server. vLLM includes an [OpenAI compatible server](https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html) with added capabilities that allow using LM Format Enforcer without writing custom inference code.
+
+Use LM Format Enforcer with the vLLM OpenAI Server either by adding this [vLLM command line parameter](https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html#command-line-arguments-for-the-server):
+
+```--guided-decoding-backend lm-format-enforcer```
+
+Or on a per-request basis, by adding the `guided_decoding_backend` [extra parameter](https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html#extra-parameters-for-chat-api) to the request:
+
+```
+completion = client.chat.completions.create(
+  model="mistralai/Mistral-7B-Instruct-v0.2",
+  messages=[
+    {"role": "user", "content": "Classify this sentiment: vLLM is wonderful!"}
+  ],
+  extra_body={
+    "guided_choice": ["positive", "negative"],
+    "guided_decoding_backend": "lm-format-enforcer"
+  }
+)
+```
+Json schema and regex decoding also supported via `guided_json` and `guided_regex` parameters.
+
 ## How does it work?
 
 The library works by combining a character level parser and a tokenizer prefix tree into a smart token filtering mechanism.
