@@ -98,17 +98,19 @@ For the different ways to integrate with huggingface transformers, see the [unit
 
 LM Format Enforcer is integrated into the [vLLM](https://github.com/vllm-project/vllm) inference server. vLLM includes an [OpenAI compatible server](https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html) with added capabilities that allow using LM Format Enforcer without writing custom inference code.
 
-Use LM Format Enforcer with the vLLM OpenAI Server either by adding this [vLLM command line parameter](https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html#command-line-arguments-for-the-server):
+Use LM Format Enforcer with the vLLM OpenAI Server either by adding the [vLLM command line parameter](https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html#command-line-arguments-for-the-server):
 
-```--guided-decoding-backend lm-format-enforcer```
+```
+python -m vllm.entrypoints.openai.api_server --model mistralai/Mistral-7B-Instruct-v0.2 --guided-decoding-backend lm-format-enforcer
+ ```
 
-Or on a per-request basis, by adding the `guided_decoding_backend` [extra parameter](https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html#extra-parameters-for-chat-api) to the request:
+Or on a per-request basis, by adding the `guided_decoding_backend` parameter to the request together with the guided decoding parameters:
 
 ```
 completion = client.chat.completions.create(
   model="mistralai/Mistral-7B-Instruct-v0.2",
   messages=[
-    {"role": "user", "content": "Classify this sentiment: vLLM is wonderful!"}
+    {"role": "user", "content": "Classify this sentiment: LMFE is wonderful!"}
   ],
   extra_body={
     "guided_choice": ["positive", "negative"],
@@ -116,7 +118,7 @@ completion = client.chat.completions.create(
   }
 )
 ```
-Json schema and regex decoding also supported via `guided_json` and `guided_regex` parameters.
+Json schema and regex decoding also supported via `guided_json` and `guided_regex` [extra parameters](https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html#extra-parameters-for-chat-api).
 
 ## How does it work?
 
