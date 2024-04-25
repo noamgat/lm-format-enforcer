@@ -115,12 +115,12 @@ completion = client.chat.completions.create(
     {"role": "user", "content": "Classify this sentiment: LMFE is wonderful!"}
   ],
   extra_body={
-    "guided_choice": ["positive", "negative"],
+    "guided_regex": "[Pp]ositive|[Nn]egative",
     "guided_decoding_backend": "lm-format-enforcer"
   }
 )
 ```
-Json schema and regex decoding also supported via `guided_json` and `guided_regex` [extra parameters](https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html#extra-parameters-for-chat-api).
+Json schema and choice decoding also supported via `guided_json` and `guided_choice` [extra parameters](https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html#extra-parameters-for-chat-api).
 
 ## How does it work?
 
