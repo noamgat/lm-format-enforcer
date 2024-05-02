@@ -371,3 +371,83 @@ def test_comma_cannot_start_list_2():
     class FlightRoute(BaseModel):
         airports: List[str]
     _test_json_schema_parsing_with_string(output_notok, FlightRoute.model_json_schema(), False)
+
+
+def test_multi_function_schema():
+    # https://github.com/noamgat/lm-format-enforcer/issues/95
+    _multi_function_schema = {
+        "type": "object",
+        "properties": {
+            "name": {
+                "type": "string",
+                "enum": [
+                    "sums",
+                    "concat"
+                ]
+            }
+        },
+        "oneOf": [
+            {
+            "properties": {
+                "name": {
+                "const": "sums"
+                },
+                "arguments": {
+                "properties": {
+                    "a": {
+                    "type": "integer"
+                    },
+                    "b": {
+                    "default": 1,
+                    "type": "integer"
+                    }
+                },
+                "required": [
+                    "a"
+                ],
+                "type": "object"
+                }
+            }
+            },
+            {
+            "properties": {
+                "name": {
+                "const": "concat"
+                },
+                "arguments": {
+                "properties": {
+                    "c": {
+                    "type": "string"
+                    },
+                    "d": {
+                    "default": 1,
+                    "type": "string"
+                    }
+                },
+                "required": [
+                    "c"
+                ],
+                "type": "object"
+                }
+            }
+            }
+        ],
+        "required": [
+            "name",
+            "arguments"
+        ]
+    }
+    valid_examples = [
+        """{"name": "concat", "arguments": {"c": "hello", "d": "world"}}""",
+        """{"name": "sums", "arguments": {"a": 1}}""",
+    ]
+    invalid_examples = [
+        """{"name": "concat", "arguments": {"b": 1}}""",
+        """{"name": "concat", "arguments": {"a": 1}}""",
+        """{"name": "concat"}""",
+        """{"name": "badname", "arguments": {"c": "hello", "b": "world"}}""",
+    ]
+    for example in valid_examples:
+        _test_json_schema_parsing_with_string(example, _multi_function_schema, True)
+    for example in invalid_examples:
+        _test_json_schema_parsing_with_string(example, _multi_function_schema, False)

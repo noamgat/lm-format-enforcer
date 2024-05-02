@@ -150,6 +150,18 @@ class BaseParsingState(CharacterLevelParser):
         self.root = root
 
 
+def _merge_object_schemas(base_schema: JsonSchemaObject, option_schema: JsonSchemaObject) -> JsonSchemaObject:
+    for property_name, property_value in base_schema.properties.items():
+        # We assume that if a property exists in both base and option, the option version will be
+        # more specific, therefore we only take missing entries
+        if property_name not in option_schema.properties:
+            option_schema.properties[property_name] = property_value
+    for required_property in base_schema.required:
+        if required_property not in option_schema.required:
+            option_schema.required.append(required_property)
+    return option_schema
+
+
 def get_parser(
     parsing_state: JsonSchemaParser,
     value_schema: JsonSchemaObject
@@ -159,6 +171,13 @@ def get_parser(
     if value_schema.anyOf:
         parsers = [get_parser(parsing_state, schema) for schema in value_schema.anyOf]
         return UnionParser(parsers)
+    if value_schema.extras and 'const' in value_schema.extras:
+        allowed_value = value_schema.extras['const']
+        is_string = type(allowed_value) == str
+        return StringParsingState(parsing_state, 
+                                  [allowed_value], 
+                                  require_opening_quote=is_string, 
+                                  require_closing_quote=is_string)
     if value_schema.type == "string":
         return StringParsingState(
             parsing_state,
@@ -169,6 +188,12 @@ def get_parser(
             pattern=value_schema.pattern,
         )
     elif value_schema.type == "object":
+        if value_schema.oneOf:
+            # We create a combined object schema for each option that includes the information from the parent
+            # And then create a UnionParser based on the combined options
+            merged_schemas = [_merge_object_schemas(value_schema, option_schema) for option_schema in value_schema.oneOf]
+            object_parsing_options = [ObjectParsingState(merged_schema, parsing_state) for merged_schema in merged_schemas]
+            return UnionParser(object_parsing_options)
         return ObjectParsingState(value_schema, parsing_state)
     elif value_schema.type == None and value_schema.ref:
         value_class_name = value_schema.ref.split('/')[-1]
