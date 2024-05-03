@@ -451,3 +451,50 @@ def test_multi_function_schema():
         _test_json_schema_parsing_with_string(example, _multi_function_schema, True)
     for example in invalid_examples:
         _test_json_schema_parsing_with_string(example, _multi_function_schema, False)
+
+
+def test_top_level_array_object():
+    test_schema = {
+        "type": "array",
+        "items": {
+            "type": "object",
+            "properties": {
+                "arguments": {
+                    "type": "object"
+                },
+                "name": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "name",
+                "arguments"
+            ]
+        },
+        "minItems": 1
+    }
+    valid_result = """[
+  {
+    "name": "sums",
+    "arguments": {
+      "a": 5,
+      "b": 6
+    }
+  },
+  {
+    "name": "sums",
+    "arguments": {
+      "a": 2,
+      "b": 7
+    }
+  },
+  {
+    "name": "subtraction",
+    "arguments": {
+      "c": 3,
+      "d": 3
+    }
+  }]"""
+    invalid_result = valid_result[:-1]
+    _test_json_schema_parsing_with_string(valid_result, test_schema, True)
+    _test_json_schema_parsing_with_string(invalid_result, test_schema, False)

@@ -60,7 +60,7 @@ class JsonSchemaParser(CharacterLevelParser):
         # This is different from the SequenceParser, in which we need to split (union) into all options.
         receiving_idx = len(self.object_stack) - 1
         last_parsed_string = self.last_parsed_string
-        while new_character not in self.object_stack[receiving_idx].get_allowed_characters():
+        while receiving_idx >= 0 and new_character not in self.object_stack[receiving_idx].get_allowed_characters():
             finished_receiver = self.object_stack[receiving_idx]
             if isinstance(finished_receiver, StringParsingState):
                 last_parsed_string = finished_receiver.parsed_string
@@ -70,7 +70,8 @@ class JsonSchemaParser(CharacterLevelParser):
         updated_parser = JsonSchemaParser(self.context, self.config, updated_stack, self.num_consecutive_whitespaces)
         updated_parser.context.active_parser = updated_parser
         updated_parser.last_parsed_string = last_parsed_string
-        updated_parser.object_stack[receiving_idx] = updated_parser.object_stack[receiving_idx].add_character(new_character)
+        if receiving_idx >= 0:
+            updated_parser.object_stack[receiving_idx] = updated_parser.object_stack[receiving_idx].add_character(new_character)
         if new_character in WHITESPACE_CHARACTERS:
             updated_parser.num_consecutive_whitespaces += 1
             updated_parser.last_non_whitespace_character = self.last_non_whitespace_character
@@ -78,7 +79,7 @@ class JsonSchemaParser(CharacterLevelParser):
             updated_parser.num_consecutive_whitespaces = 0
             updated_parser.last_non_whitespace_character = new_character
 
-        if isinstance(updated_parser.object_stack[-1], UnionParser) and \
+        if updated_parser.object_stack and isinstance(updated_parser.object_stack[-1], UnionParser) and \
             any(isinstance(parser, (ObjectParsingState, ListParsingState)) for parser in updated_parser.object_stack[-1].parsers):
             # If the top parser is a union parser with "advanced" (=parsers that modify the object stack) parsers inside, 
             # we need to split the top level parser into the different options,
