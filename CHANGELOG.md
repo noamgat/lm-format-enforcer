@@ -1,5 +1,8 @@
 # LM Format Enforcer Changelog
 
+## v0.9.10
+- [#95] Added anyOf support to JsonSchemaParser, making function calls possible.
+
 ## v0.9.9
 - Updated README with vLLM OpenAI Server Inference integration
 
