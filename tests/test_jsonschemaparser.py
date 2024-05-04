@@ -1,10 +1,11 @@
 import json
+import os
 from typing import Dict, List, Optional, Union
 from pydantic import BaseModel, Field
 from lmformatenforcer import JsonSchemaParser
 from enum import Enum
 import pytest
-from lmformatenforcer.consts import BACKSLASH, BACKSLASH_ESCAPING_CHARACTERS
+from lmformatenforcer.consts import BACKSLASH, BACKSLASH_ESCAPING_CHARACTERS, CONFIG_ENV_VAR_LMFE_FORCE_JSON_FIELD_ORDER, CONFIG_ENV_VAR_MAX_CONSECUTIVE_WHITESPACES
 
 from .common import assert_parser_with_string, CharacterNotAllowedException
 
@@ -498,3 +499,52 @@ def test_top_level_array_object():
     invalid_result = valid_result[:-1]
     _test_json_schema_parsing_with_string(valid_result, test_schema, True)
     _test_json_schema_parsing_with_string(invalid_result, test_schema, False)
+
+
+from contextlib import contextmanager
+ 
+ 
+
+@contextmanager
+def _temp_replace_env_var(env_var_name, temp_value):
+    try:
+        prev_env_var = os.environ.get(env_var_name, None)
+        if prev_env_var is not None:
+            os.environ.pop(env_var_name)
+        if temp_value is not None:
+            os.environ[env_var_name] = str(temp_value)
+        yield None
+    finally:
+        if prev_env_var is None:
+            if temp_value is not None:
+                os.environ.pop(env_var_name)
+        else:
+            os.environ[env_var_name] = prev_env_var
+
+
+def test_control_json_force_field_order_via_env_var():
+    class TwoRequiredModel(BaseModel):
+        a: int
+        b: str
+        c: int = 1
+    schema = TwoRequiredModel.model_json_schema()
+    env_var_name = CONFIG_ENV_VAR_LMFE_FORCE_JSON_FIELD_ORDER
+    with _temp_replace_env_var(env_var_name, None):
+        # Check that the default is false
+        _test_json_schema_parsing_with_string('{"b": "X", "a": 1}', schema, True)
+    with _temp_replace_env_var(env_var_name, 'True'):
+        # Check that setting to true behaves correctly
+        _test_json_schema_parsing_with_string('{"b": "X", "a": 1}', schema, False)
+        _test_json_schema_parsing_with_string('{"a": 1, "b": "X"}', schema, True)
+
+
+def test_max_whitespaces_via_env_var():
+    env_var_name = CONFIG_ENV_VAR_MAX_CONSECUTIVE_WHITESPACES
+    schema = SampleModel.model_json_schema()
+    base_answer = '{"num":$1}'
+    with _temp_replace_env_var(env_var_name, '8'):
+        for num_spaces in range(12):
+            expect_success = num_spaces <= 8
+            _test_json_schema_parsing_with_string(base_answer.replace("$", " " * num_spaces), schema, expect_success)
+
+        
