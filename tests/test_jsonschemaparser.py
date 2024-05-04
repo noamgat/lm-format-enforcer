@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 from lmformatenforcer import JsonSchemaParser
 from enum import Enum
 import pytest
-from lmformatenforcer.consts import BACKSLASH, BACKSLASH_ESCAPING_CHARACTERS, CONFIG_ENV_VAR_STRICT_JSON_FIELD_ORDER , CONFIG_ENV_VAR_MAX_CONSECUTIVE_WHITESPACES
+from lmformatenforcer.consts import BACKSLASH, BACKSLASH_ESCAPING_CHARACTERS, CONFIG_ENV_VAR_STRICT_JSON_FIELD_ORDER, CONFIG_ENV_VAR_MAX_CONSECUTIVE_WHITESPACES
 
 from .common import assert_parser_with_string, CharacterNotAllowedException
 
@@ -525,7 +525,7 @@ def test_control_json_force_field_order_via_env_var():
         b: str
         c: int = 1
     schema = TwoRequiredModel.model_json_schema()
-    env_var_name = CONFIG_ENV_VAR_STRICT_JSON_FIELD_ORDER 
+    env_var_name = CONFIG_ENV_VAR_STRICT_JSON_FIELD_ORDER
     with _temp_replace_env_var(env_var_name, None):
         # Check that the default is false
         _test_json_schema_parsing_with_string('{"b": "X", "a": 1}', schema, True)

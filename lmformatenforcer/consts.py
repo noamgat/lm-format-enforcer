@@ -10,6 +10,6 @@ CONFIG_ENV_VAR_MAX_CONSECUTIVE_WHITESPACES = 'LMFE_MAX_CONSECUTIVE_WHITESPACES'
 """Environment variable for externally controlling how many consective whitespaces the 
 JsonSchemaParser will allow. Default: 12"""
 
-CONFIG_ENV_VAR_STRICT_JSON_FIELD_ORDER  = 'LMFE_STRICT_JSON_FIELD_ORDER '
+CONFIG_ENV_VAR_STRICT_JSON_FIELD_ORDER = 'LMFE_STRICT_JSON_FIELD_ORDER'
 """Environment variable for externally controlling whether the JsonSchemaParser will force 
 fields to appear in the order of the 'required' field in the schema. Default: false"""
