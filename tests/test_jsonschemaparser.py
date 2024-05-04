@@ -1,5 +1,6 @@
 import json
 import os
+from contextlib import contextmanager
 from typing import Dict, List, Optional, Union
 from pydantic import BaseModel, Field
 from lmformatenforcer import JsonSchemaParser
@@ -501,10 +502,6 @@ def test_top_level_array_object():
     _test_json_schema_parsing_with_string(invalid_result, test_schema, False)
 
 
-from contextlib import contextmanager
- 
- 
-
 @contextmanager
 def _temp_replace_env_var(env_var_name, temp_value):
     try:
@@ -546,5 +543,3 @@ def test_max_whitespaces_via_env_var():
         for num_spaces in range(12):
             expect_success = num_spaces <= 8
             _test_json_schema_parsing_with_string(base_answer.replace("$", " " * num_spaces), schema, expect_success)
-
-        
