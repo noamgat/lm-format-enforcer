@@ -1,12 +1,34 @@
 import abc
-from dataclasses import dataclass
-from typing import Hashable, List, Optional
-from .consts import COMPLETE_ALPHABET, WHITESPACE_CHARACTERS
+import os
+from dataclasses import dataclass, field
+from typing import Hashable, List, Optional, TypeVar
+from .consts import (COMPLETE_ALPHABET, WHITESPACE_CHARACTERS, DEFAULT_MAX_CONSECUTIVE_WHITESPACES, 
+                     DEFAULT_FORCE_JSON_FIELD_ORDER, CONFIG_ENV_VAR_MAX_CONSECUTIVE_WHITESPACES, 
+                     CONFIG_ENV_VAR_LMFE_FORCE_JSON_FIELD_ORDER)
+
+
+def _parse_bool(s: str) -> bool:
+    return s and (s.strip().lower() in ['true', '1'])
+
+
+def _env_or_default_field(env_var: str, default_val):
+    default_val_type = type(default_val)
+    parser_func = _parse_bool if default_val_type == bool else default_val_type
+    def factory_func():
+        return parser_func(os.environ.get(env_var, str(default_val)))
+    return field(default_factory=factory_func)
 
 
 @dataclass
 class CharacterLevelParserConfig:
-        alphabet: str = COMPLETE_ALPHABET
+    alphabet: str = COMPLETE_ALPHABET
+    max_consecutive_whitespaces: int = _env_or_default_field(CONFIG_ENV_VAR_MAX_CONSECUTIVE_WHITESPACES, 
+                                                             DEFAULT_MAX_CONSECUTIVE_WHITESPACES)
+    """How many consective whitespaces the JsonSchemaParser will allow"""
+    force_json_field_order: bool = _env_or_default_field(CONFIG_ENV_VAR_LMFE_FORCE_JSON_FIELD_ORDER, 
+                                                         DEFAULT_FORCE_JSON_FIELD_ORDER)
+    """Whether the JsonSchemaParser will force fields to appear in the 
+    order of the 'required' field in the schema"""
 
 
 class CharacterLevelParser(abc.ABC):

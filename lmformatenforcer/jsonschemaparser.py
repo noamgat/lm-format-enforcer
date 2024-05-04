@@ -7,7 +7,7 @@ from typing import Dict, Hashable, List, Optional, Union, cast
 from .external.jsonschemaobject import JsonSchemaObject, json_schema_data_formats
 from .exceptions import LMFormatEnforcerException
 from .characterlevelparser import CharacterLevelParser, CharacterLevelParserConfig, ForceStopParser, SequenceParser, StringParser, UnionParser
-from .consts import BACKSLASH, BACKSLASH_ESCAPING_CHARACTERS, MAX_CONSECUTIVE_WHITESPACES, WHITESPACE_CHARACTERS
+from .consts import BACKSLASH, BACKSLASH_ESCAPING_CHARACTERS, WHITESPACE_CHARACTERS
 from .regexparser import RegexParser
 
 # No need to include the 'integer' option in the anyOf, as it is a subset of 'number'
@@ -121,7 +121,7 @@ class JsonSchemaParser(CharacterLevelParser):
             # characters when the object stack is empty (= we are done parsing)
             allowed_characters = WHITESPACE_CHARACTERS
         
-        if self.num_consecutive_whitespaces >= MAX_CONSECUTIVE_WHITESPACES:
+        if self.num_consecutive_whitespaces >= self.config.max_consecutive_whitespaces:
             # print("Filtering whitespace characters")
             allowed_characters = "".join(c for c in allowed_characters if c not in WHITESPACE_CHARACTERS)
         return allowed_characters
@@ -302,10 +302,15 @@ class ObjectParsingState(BaseParsingState):
             if new_character == '"':
                 possible_keys = None
                 if not self.is_dictionary:
-                    possible_keys = list(self.schema_object.properties.keys())
-                    possible_keys = list(
-                        set(possible_keys).difference(self.existing_keys)
-                    )
+                    required_keys = self.schema_object.required or []
+                    next_required_key = next((key for key in required_keys if key not in self.existing_keys), None)
+                    if self.root.config.force_json_field_order and next_required_key:
+                        possible_keys = [next_required_key]
+                    else:
+                        possible_keys = list(self.schema_object.properties.keys())
+                        possible_keys = list(
+                            set(possible_keys).difference(self.existing_keys)
+                        )
                 # We send require_opening_quote=True and then add_character('"') instead of require_opening_quote=False
                 # Because there is a difference between "don't need a quote" and "received it before creating the parser"
                 key_parser = StringParsingState(
@@ -325,10 +330,6 @@ class ObjectParsingState(BaseParsingState):
                     else:
                         value_schema = JsonSchemaParser.ANY_JSON_OBJECT_SCHEMA
                 else:
-                    possible_keys = list(self.schema_object.properties.keys())
-                    possible_keys = list(
-                        set(possible_keys).difference(self.existing_keys)
-                    )
                     value_schema = self.schema_object.properties[self.current_key]
                 self.current_key_parser = get_parser(
                     self.root, value_schema
