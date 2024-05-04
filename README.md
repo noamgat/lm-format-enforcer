@@ -186,6 +186,25 @@ idx | generated_token | generated_token_idx | generated_score | leading_token | 
 You can see that the model "wanted" to start the answer using ```Sure```, but the format enforcer forced it to use ```Michael``` - there was a big gap in token 1. Afterwards, almost all of the leading scores are all within the allowed token set, meaning the model likely did not hallucinate due to the token forcing. The only exception was timestep 4 - " Born" was forced while the LLM wanted to choose "born". This is a hint for the prompt engineer, to change the prompt to use a lowercase b instead.
 
 
+## Configuration options
+
+LM Format Enforcer makes use of several heuristics to avoid edge cases that may happen with LLM's generating structure outputs.
+There are two ways to control these heuristics:
+
+### Option 1: via Environment Variables
+
+There are several environment variables that can be set, that affect the operation of the library. This method is useful when you don't want to modify the code, for example when using the library through the vLLM OpenAI server.
+
+- `LMFE_MAX_CONSECUTIVE_WHITESPACES` - How many consecutive whitespaces are allowed when parsing JsonSchemaObjects. Default: 12.
+- `LMFE_FORCE_JSON_FIELD_ORDER` - Should the JsonSchemaParser force the properties to appear in the same order as they appear in the 'required' list of the JsonSchema? (Note: this is consistent with the order of declaration in Pydantic models). Default: False.
+
+### Option 2: via the CharacterLevelParserConfig class
+When using the library through code, any `CharacterLevelParser` (`JsonSchemaParser`, `RegexParser` etc) constructor receives an optional `CharacterLevelParserConfig` object. 
+
+Therefore, to configure the heuristics of a single parser, instantiate a `CharacterLevelParserConfig` object, modify its values and pass it to the `CharacterLevelParser`'s constructor.
+
+
+
 ## Known issues and limitations
 
 - LM Format Enforcer requires a python API to process the output logits of the language model. This means that until the APIs are extended, it can not be used with OpenAI ChatGPT and similar API based solutions.

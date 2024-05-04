@@ -1,5 +1,8 @@
 # LM Format Enforcer Changelog
 
+## v0.10.1
+- Allowing control of LM Format Enforcer's heuristics via env var / configuration objects. See the 'Configuration options' section of the README.
+
 ## v0.9.10
 - [#95] Added anyOf support to JsonSchemaParser, making function calls possible.
 
