@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from typing import Hashable, List, Optional, TypeVar
 from .consts import (COMPLETE_ALPHABET, WHITESPACE_CHARACTERS, DEFAULT_MAX_CONSECUTIVE_WHITESPACES, 
                      DEFAULT_FORCE_JSON_FIELD_ORDER, CONFIG_ENV_VAR_MAX_CONSECUTIVE_WHITESPACES, 
-                     CONFIG_ENV_VAR_LMFE_FORCE_JSON_FIELD_ORDER)
+                     CONFIG_ENV_VAR_STRICT_JSON_FIELD_ORDER )
 
 
 def _parse_bool(s: str) -> bool:
@@ -25,7 +25,7 @@ class CharacterLevelParserConfig:
     max_consecutive_whitespaces: int = _env_or_default_field(CONFIG_ENV_VAR_MAX_CONSECUTIVE_WHITESPACES, 
                                                              DEFAULT_MAX_CONSECUTIVE_WHITESPACES)
     """How many consective whitespaces the JsonSchemaParser will allow"""
-    force_json_field_order: bool = _env_or_default_field(CONFIG_ENV_VAR_LMFE_FORCE_JSON_FIELD_ORDER, 
+    force_json_field_order: bool = _env_or_default_field(CONFIG_ENV_VAR_STRICT_JSON_FIELD_ORDER , 
                                                          DEFAULT_FORCE_JSON_FIELD_ORDER)
     """Whether the JsonSchemaParser will force fields to appear in the 
     order of the 'required' field in the schema"""
