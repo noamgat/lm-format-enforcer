@@ -243,6 +243,24 @@ def test_any_json_object():
     _test_json_schema_parsing_with_string('{"a": 1, "b": 2.2, "c": "c", "d": [1,2,3, null], "e": {"ee": 2}}', None, True)
     _test_json_schema_parsing_with_string("true", None, True)
     _test_json_schema_parsing_with_string('"str"', None, True)
+    
+    
+def test_leading_comma():
+    array_of_objects_schema = {
+        "type": "array",
+        "items": {
+            "type": "object",
+            "properties": {
+                "key": {
+                    "type": "string"
+                }
+            },
+            "required": ["key"]
+        }
+    }
+    
+    _test_json_schema_parsing_with_string('[{"key": "val"}, {"key": "val2"}]', array_of_objects_schema, True) 
+    _test_json_schema_parsing_with_string('[,{"key": "val"}]', array_of_objects_schema, False)
 
 
 def test_long_json_object():
