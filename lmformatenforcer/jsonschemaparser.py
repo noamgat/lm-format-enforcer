@@ -90,6 +90,7 @@ class JsonSchemaParser(CharacterLevelParser):
                 option_parser = JsonSchemaParser(self.context, self.config, option_stack, updated_parser.num_consecutive_whitespaces)
                 option_parser.context.active_parser = option_parser
                 option_parser.last_parsed_string = last_parsed_string
+                option_parser.last_non_whitespace_character = updated_parser.last_non_whitespace_character
                 option_json_schema_parsers.append(option_parser)
             return UnionParser(option_json_schema_parsers)
 

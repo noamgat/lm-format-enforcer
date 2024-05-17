@@ -292,6 +292,24 @@ def test_allof():
         _test_json_schema_parsing_with_string(test_string, allof_schema, False)
 
 
+def test_leading_comma():
+    array_of_objects_schema = {
+        "type": "array",
+        "items": {
+            "type": "object",
+            "properties": {
+                "key": {
+                    "type": "string"
+                }
+            },
+            "required": ["key"]
+        }
+    }
+
+    _test_json_schema_parsing_with_string('[{"key": "val"}, {"key": "val2"}]', array_of_objects_schema, True) 
+    _test_json_schema_parsing_with_string('[,{"key": "val"}]', array_of_objects_schema, False)
+
+
 def test_long_json_object():
     from urllib.request import urlopen
     import json
