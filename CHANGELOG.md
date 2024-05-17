@@ -1,5 +1,10 @@
 # LM Format Enforcer Changelog
 
+## v0.10.2
+- [#100] JsonSchemaParser: Added allOf support
+- [#99] JsonSchemaParser: Fixed edge case that would allow leading comma in JSON Array 
+- [#102] JsonSchemaParser: Fixed Array of Enums not producing multiple values
+
 ## v0.10.1
 - Allowing control of LM Format Enforcer's heuristics via env var / configuration objects. See the 'Configuration options' section of the README.
 

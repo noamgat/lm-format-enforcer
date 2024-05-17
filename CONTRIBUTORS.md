@@ -1,8 +1,11 @@
 # Contributors
 
+## Main Authors and Maintainers
+
+* [Noam Gat](https://github.com/noamgat)
+
 ## Special thanks for all the people who had helped this project so far:
 
-* [Noam Gat](https://github.com/noamgat) (Main Author)
 * [Jarno Elonen](https://github.com/elonen) (Improved performance of length-limited json strings)
 * [Benedikt Fuchs](https://github.com/helpmefindaname) (Bug fixes)
 * [Ahmet Erdem](https://github.com/aerdem4) from NVIDIA (NVIDIA TensorRT-LLM support)
@@ -10,6 +13,7 @@
 * [Brian Dashore](https://github.com/bdashore3) (ExLlamaV2 improvements)
 * [turboderp](https://github.com/turboderp) (ExLlamaV2 improvements) 
 * [Ari Weinstein](https://github.com/AriX) (JSONSchemaParser performance improvements)
+* [NJordan72](https://github.com/NJordan72) (JSONSchemaParser Bug Fixes)
 
 ## I would like to join this list. How can I help the project?
 
