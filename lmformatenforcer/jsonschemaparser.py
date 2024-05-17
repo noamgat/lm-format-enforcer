@@ -172,6 +172,11 @@ def get_parser(
     if value_schema.anyOf:
         parsers = [get_parser(parsing_state, schema) for schema in value_schema.anyOf]
         return UnionParser(parsers)
+    if value_schema.allOf:
+        merged_schema = value_schema.allOf[0]
+        for schema in value_schema.allOf[1:]:
+            merged_schema = _merge_object_schemas(merged_schema, schema)
+        return get_parser(parsing_state, merged_schema)
     if value_schema.extras and 'const' in value_schema.extras:
         allowed_value = value_schema.extras['const']
         is_string = type(allowed_value) == str
