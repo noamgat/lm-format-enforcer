@@ -102,6 +102,13 @@ class JsonSchemaParser(CharacterLevelParser):
             if isinstance(finished_receiver, StringParsingState):
                 updated_parser.last_parsed_string = finished_receiver.parsed_string
             del new_object_stack[-1]
+            if new_object_stack:
+                new_top_parser = new_object_stack[-1]
+                if isinstance(new_top_parser, ListParsingState):
+                    new_top_parser = new_top_parser._clone()
+                    new_top_parser.num_items_seen += 1
+                    new_object_stack[-1] = new_top_parser
+                    
 
         return updated_parser
 
@@ -657,7 +664,8 @@ class ListParsingState(PrimitiveParsingState):
     
     def get_allowed_control_characters(self):
         num_items = self.num_items_seen
-        is_on_top = self.root.context.active_parser.object_stack[-1] == self
+        top_parser = self.root.context.active_parser.object_stack[-1]
+        is_on_top = top_parser == self or isinstance(top_parser, UnionParser) and self in top_parser.parsers
         if (not is_on_top) and self.root.context.active_parser.last_non_whitespace_character != "[":
             # If there is an active parser above us, and the last character is not [, 
             # there is an active item parser on the stack that we did not count yet.

@@ -567,6 +567,32 @@ def test_top_level_array_object():
     _test_json_schema_parsing_with_string(invalid_result, test_schema, False)
 
 
+def test_arrays_with_multiple_enums():
+    schema = {
+        "properties": {
+            "array_of_numbers": {
+                "default": [],
+                "description": "An array of numbers",
+                "items": {
+                    "type": "integer",
+                    "enum": [1, 2, 3, 4, 5],
+                },
+                "title": "Items",
+                "type": "array",
+                "maxItems": 2
+            }
+        },
+        "required": ["array_of_numbers"],
+        "type": "object",
+    }
+    
+    _test_json_schema_parsing_with_string('{"array_of_numbers":[4]}', schema, True)
+    _test_json_schema_parsing_with_string('{"array_of_numbers":[4, 1]}', schema, True)
+    _test_json_schema_parsing_with_string('{"array_of_numbers":[4, 4]}', schema, True)
+    _test_json_schema_parsing_with_string('{"array_of_numbers":[1, 2, 3]}', schema, False)
+    _test_json_schema_parsing_with_string('{"array_of_numbers":[6]}', schema, False)
+    _test_json_schema_parsing_with_string('{"array_of_numbers":[1, 6]}', schema, False)
+
 @contextmanager
 def _temp_replace_env_var(env_var_name, temp_value):
     try:
