@@ -3,7 +3,6 @@ import interegular
 from interegular.fsm import anything_else
 
 from .characterlevelparser import CharacterLevelParser, CharacterLevelParserConfig
-from .consts import COMPLETE_ALPHABET
 
 class RegexParser(CharacterLevelParser):
     """RegexParser is an example CharacterLevelParser that only allows strings that match a given regular expression."""

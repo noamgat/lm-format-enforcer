@@ -73,11 +73,12 @@ Capability | LM Format Enforcer | [Guidance](https://github.com/guidance-ai/guid
 :------------ | :-------------| :-------------| :------------- | :----
 Regular Expressions | ✅ |  ✅ | ❌ | ✅
 JSON Schema | ✅ |  🟡 ([Partial conversion is possible](https://github.com/guidance-ai/guidance/blob/main/notebooks/applications/jsonformer.ipynb)) | ✅ | ✅
-Batched Generation | ✅ |  ❌ | ❌ | ❌
-Beam Search | ✅ |  ❌ | ❌ | ❌
-Integrates into existing pipelines | ✅ | ❌ | ❌ | ❌
+Batched Generation | ✅ |  ❌ | ❌ | ✅
+Beam Search | ✅ |  ❌ | ❌ | ✅
+Integrates into existing pipelines | ✅ | ❌ | ❌ | ✅
 Optional JSON Fields | ✅ |  ❌ | ❌ | ❌
 LLM Controls JSON field ordering and whitespace | ✅ | ❌ | ❌ | ❌
+JSON Schema with recursive classes | ✅ | ❌ | ✅ | ❌
 
 Spotted a mistake? Library updated with new capabilities? [Open an issue!](https://github.com/noamgat/lm-format-enforcer/issues)
 
@@ -92,6 +93,34 @@ We created a Google Colab Notebook which contains a full example of how to use t
 You can also [view the notebook in GitHub](https://github.com/noamgat/lm-format-enforcer/blob/main/samples/colab_llama2_enforcer.ipynb).
 
 For the different ways to integrate with huggingface transformers, see the [unit tests](https://github.com/noamgat/lm-format-enforcer/blob/main/tests/test_transformerenforcer.py).
+
+## vLLM Server Integration
+
+LM Format Enforcer is integrated into the [vLLM](https://github.com/vllm-project/vllm) inference server. vLLM includes an [OpenAI compatible server](https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html) with added capabilities that allow using LM Format Enforcer without writing custom inference code.
+
+Use LM Format Enforcer with the vLLM OpenAI Server either by adding the [vLLM command line parameter](https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html#command-line-arguments-for-the-server):
+
+```
+python -m vllm.entrypoints.openai.api_server \
+  --model mistralai/Mistral-7B-Instruct-v0.2 \
+  --guided-decoding-backend lm-format-enforcer
+ ```
+
+Or on a per-request basis, by adding the `guided_decoding_backend` parameter to the request together with the guided decoding parameters:
+
+```
+completion = client.chat.completions.create(
+  model="mistralai/Mistral-7B-Instruct-v0.2",
+  messages=[
+    {"role": "user", "content": "Classify this sentiment: LMFE is wonderful!"}
+  ],
+  extra_body={
+    "guided_regex": "[Pp]ositive|[Nn]egative",
+    "guided_decoding_backend": "lm-format-enforcer"
+  }
+)
+```
+Json schema and choice decoding also supported via `guided_json` and `guided_choice` [extra parameters](https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html#extra-parameters-for-chat-api).
 
 ## How does it work?
 
@@ -155,6 +184,25 @@ idx | generated_token | generated_token_idx | generated_score | leading_token | 
 
 
 You can see that the model "wanted" to start the answer using ```Sure```, but the format enforcer forced it to use ```Michael``` - there was a big gap in token 1. Afterwards, almost all of the leading scores are all within the allowed token set, meaning the model likely did not hallucinate due to the token forcing. The only exception was timestep 4 - " Born" was forced while the LLM wanted to choose "born". This is a hint for the prompt engineer, to change the prompt to use a lowercase b instead.
+
+
+## Configuration options
+
+LM Format Enforcer makes use of several heuristics to avoid edge cases that may happen with LLM's generating structure outputs.
+There are two ways to control these heuristics:
+
+### Option 1: via Environment Variables
+
+There are several environment variables that can be set, that affect the operation of the library. This method is useful when you don't want to modify the code, for example when using the library through the vLLM OpenAI server.
+
+- `LMFE_MAX_CONSECUTIVE_WHITESPACES` - How many consecutive whitespaces are allowed when parsing JsonSchemaObjects. Default: 12.
+- `LMFE_STRICT_JSON_FIELD_ORDER` - Should the JsonSchemaParser force the properties to appear in the same order as they appear in the 'required' list of the JsonSchema? (Note: this is consistent with the order of declaration in Pydantic models). Default: False.
+
+### Option 2: via the CharacterLevelParserConfig class
+When using the library through code, any `CharacterLevelParser` (`JsonSchemaParser`, `RegexParser` etc) constructor receives an optional `CharacterLevelParserConfig` object. 
+
+Therefore, to configure the heuristics of a single parser, instantiate a `CharacterLevelParserConfig` object, modify its values and pass it to the `CharacterLevelParser`'s constructor.
+
 
 
 ## Known issues and limitations

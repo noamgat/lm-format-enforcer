@@ -1,5 +1,37 @@
 # LM Format Enforcer Changelog
 
+## v0.10.2
+- [#100] JsonSchemaParser: Added allOf support
+- [#99] JsonSchemaParser: Fixed edge case that would allow leading comma in JSON Array 
+- [#102] JsonSchemaParser: Fixed Array of Enums not producing multiple values
+
+## v0.10.1
+- Allowing control of LM Format Enforcer's heuristics via env var / configuration objects. See the 'Configuration options' section of the README.
+
+## v0.9.10
+- [#95] Added anyOf support to JsonSchemaParser, making function calls possible.
+
+## v0.9.9
+- Updated README with vLLM OpenAI Server Inference integration
+
+## v0.9.8
+- [#80] JSONSchemaParser List would allow opening comma before first element if there was a whitespace before it
+
+
+## v0.9.7
+- [#93] Improved JSONSchemaParser performance, unit tests run twice as fast! Joint effort with [Ari Weinstein](https://github.com/AriX). Thanks! 
+
+
+## v0.9.6
+- [#88] ExllamaV2 optimizations
+- Bugfix in ExllamaV2 sample notebook that generated garbage data after the response.
+
+## v0.9.5
+- [#87] Allow regex to exit to forcestopparser when receiving a pad/eos token after having been in a final state. Thanks Josh C!
+
+## v0.9.4
+- [#27] Improving vLLM class support (AsyncLLMEngine etc)
+
 ## v0.9.3
 - [#83](https://github.com/noamgat/lm-format-enforcer/pull/83) - Supporting added model tokens
 - Improved support for out-of-token-vocabulary characters

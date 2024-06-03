@@ -7,7 +7,7 @@ from typing import Dict, Hashable, List, Optional, Union, cast
 from .external.jsonschemaobject import JsonSchemaObject, json_schema_data_formats
 from .exceptions import LMFormatEnforcerException
 from .characterlevelparser import CharacterLevelParser, CharacterLevelParserConfig, ForceStopParser, SequenceParser, StringParser, UnionParser
-from .consts import BACKSLASH, BACKSLASH_ESCAPING_CHARACTERS, MAX_CONSECUTIVE_WHITESPACES, WHITESPACE_CHARACTERS
+from .consts import BACKSLASH, BACKSLASH_ESCAPING_CHARACTERS, WHITESPACE_CHARACTERS
 from .regexparser import RegexParser
 
 # No need to include the 'integer' option in the anyOf, as it is a subset of 'number'
@@ -60,7 +60,7 @@ class JsonSchemaParser(CharacterLevelParser):
         # This is different from the SequenceParser, in which we need to split (union) into all options.
         receiving_idx = len(self.object_stack) - 1
         last_parsed_string = self.last_parsed_string
-        while new_character not in self.object_stack[receiving_idx].get_allowed_characters():
+        while receiving_idx >= 0 and new_character not in self.object_stack[receiving_idx].get_allowed_characters():
             finished_receiver = self.object_stack[receiving_idx]
             if isinstance(finished_receiver, StringParsingState):
                 last_parsed_string = finished_receiver.parsed_string
@@ -70,14 +70,16 @@ class JsonSchemaParser(CharacterLevelParser):
         updated_parser = JsonSchemaParser(self.context, self.config, updated_stack, self.num_consecutive_whitespaces)
         updated_parser.context.active_parser = updated_parser
         updated_parser.last_parsed_string = last_parsed_string
-        updated_parser.object_stack[receiving_idx] = updated_parser.object_stack[receiving_idx].add_character(new_character)
+        if receiving_idx >= 0:
+            updated_parser.object_stack[receiving_idx] = updated_parser.object_stack[receiving_idx].add_character(new_character)
         if new_character in WHITESPACE_CHARACTERS:
             updated_parser.num_consecutive_whitespaces += 1
+            updated_parser.last_non_whitespace_character = self.last_non_whitespace_character
         else:
             updated_parser.num_consecutive_whitespaces = 0
             updated_parser.last_non_whitespace_character = new_character
 
-        if isinstance(updated_parser.object_stack[-1], UnionParser) and \
+        if updated_parser.object_stack and isinstance(updated_parser.object_stack[-1], UnionParser) and \
             any(isinstance(parser, (ObjectParsingState, ListParsingState)) for parser in updated_parser.object_stack[-1].parsers):
             # If the top parser is a union parser with "advanced" (=parsers that modify the object stack) parsers inside, 
             # we need to split the top level parser into the different options,
@@ -88,8 +90,25 @@ class JsonSchemaParser(CharacterLevelParser):
                 option_parser = JsonSchemaParser(self.context, self.config, option_stack, updated_parser.num_consecutive_whitespaces)
                 option_parser.context.active_parser = option_parser
                 option_parser.last_parsed_string = last_parsed_string
+                option_parser.last_non_whitespace_character = updated_parser.last_non_whitespace_character
                 option_json_schema_parsers.append(option_parser)
             return UnionParser(option_json_schema_parsers)
+
+        # For some performance optimizations to work, we want to make sure we don't leave irrelevant
+        # objects at the top of the stack, which we know will be passed over next timestep
+        new_object_stack = updated_parser.object_stack
+        while new_object_stack and new_object_stack[-1].can_end() and new_object_stack[-1].get_allowed_characters() == '':
+            finished_receiver = new_object_stack[-1]
+            if isinstance(finished_receiver, StringParsingState):
+                updated_parser.last_parsed_string = finished_receiver.parsed_string
+            del new_object_stack[-1]
+            if new_object_stack:
+                new_top_parser = new_object_stack[-1]
+                if isinstance(new_top_parser, ListParsingState):
+                    new_top_parser = new_top_parser._clone()
+                    new_top_parser.num_items_seen += 1
+                    new_object_stack[-1] = new_top_parser
+                    
 
         return updated_parser
 
@@ -110,7 +129,7 @@ class JsonSchemaParser(CharacterLevelParser):
             # characters when the object stack is empty (= we are done parsing)
             allowed_characters = WHITESPACE_CHARACTERS
         
-        if self.num_consecutive_whitespaces >= MAX_CONSECUTIVE_WHITESPACES:
+        if self.num_consecutive_whitespaces >= self.config.max_consecutive_whitespaces:
             # print("Filtering whitespace characters")
             allowed_characters = "".join(c for c in allowed_characters if c not in WHITESPACE_CHARACTERS)
         return allowed_characters
@@ -140,6 +159,18 @@ class BaseParsingState(CharacterLevelParser):
         self.root = root
 
 
+def _merge_object_schemas(base_schema: JsonSchemaObject, option_schema: JsonSchemaObject) -> JsonSchemaObject:
+    for property_name, property_value in base_schema.properties.items():
+        # We assume that if a property exists in both base and option, the option version will be
+        # more specific, therefore we only take missing entries
+        if property_name not in option_schema.properties:
+            option_schema.properties[property_name] = property_value
+    for required_property in base_schema.required:
+        if required_property not in option_schema.required:
+            option_schema.required.append(required_property)
+    return option_schema
+
+
 def get_parser(
     parsing_state: JsonSchemaParser,
     value_schema: JsonSchemaObject
@@ -149,6 +180,18 @@ def get_parser(
     if value_schema.anyOf:
         parsers = [get_parser(parsing_state, schema) for schema in value_schema.anyOf]
         return UnionParser(parsers)
+    if value_schema.allOf:
+        merged_schema = value_schema.allOf[0]
+        for schema in value_schema.allOf[1:]:
+            merged_schema = _merge_object_schemas(merged_schema, schema)
+        return get_parser(parsing_state, merged_schema)
+    if value_schema.extras and 'const' in value_schema.extras:
+        allowed_value = value_schema.extras['const']
+        is_string = type(allowed_value) == str
+        return StringParsingState(parsing_state, 
+                                  [allowed_value], 
+                                  require_opening_quote=is_string, 
+                                  require_closing_quote=is_string)
     if value_schema.type == "string":
         return StringParsingState(
             parsing_state,
@@ -159,6 +202,12 @@ def get_parser(
             pattern=value_schema.pattern,
         )
     elif value_schema.type == "object":
+        if value_schema.oneOf:
+            # We create a combined object schema for each option that includes the information from the parent
+            # And then create a UnionParser based on the combined options
+            merged_schemas = [_merge_object_schemas(value_schema, option_schema) for option_schema in value_schema.oneOf]
+            object_parsing_options = [ObjectParsingState(merged_schema, parsing_state) for merged_schema in merged_schemas]
+            return UnionParser(object_parsing_options)
         return ObjectParsingState(value_schema, parsing_state)
     elif value_schema.type == None and value_schema.ref:
         value_class_name = value_schema.ref.split('/')[-1]
@@ -266,10 +315,15 @@ class ObjectParsingState(BaseParsingState):
             if new_character == '"':
                 possible_keys = None
                 if not self.is_dictionary:
-                    possible_keys = list(self.schema_object.properties.keys())
-                    possible_keys = list(
-                        set(possible_keys).difference(self.existing_keys)
-                    )
+                    required_keys = self.schema_object.required or []
+                    next_required_key = next((key for key in required_keys if key not in self.existing_keys), None)
+                    if self.root.config.force_json_field_order and next_required_key:
+                        possible_keys = [next_required_key]
+                    else:
+                        possible_keys = list(self.schema_object.properties.keys())
+                        possible_keys = list(
+                            set(possible_keys).difference(self.existing_keys)
+                        )
                 # We send require_opening_quote=True and then add_character('"') instead of require_opening_quote=False
                 # Because there is a difference between "don't need a quote" and "received it before creating the parser"
                 key_parser = StringParsingState(
@@ -289,10 +343,6 @@ class ObjectParsingState(BaseParsingState):
                     else:
                         value_schema = JsonSchemaParser.ANY_JSON_OBJECT_SCHEMA
                 else:
-                    possible_keys = list(self.schema_object.properties.keys())
-                    possible_keys = list(
-                        set(possible_keys).difference(self.existing_keys)
-                    )
                     value_schema = self.schema_object.properties[self.current_key]
                 self.current_key_parser = get_parser(
                     self.root, value_schema
@@ -614,7 +664,8 @@ class ListParsingState(PrimitiveParsingState):
     
     def get_allowed_control_characters(self):
         num_items = self.num_items_seen
-        is_on_top = self.root.context.active_parser.object_stack[-1] == self
+        top_parser = self.root.context.active_parser.object_stack[-1]
+        is_on_top = top_parser == self or isinstance(top_parser, UnionParser) and self in top_parser.parsers
         if (not is_on_top) and self.root.context.active_parser.last_non_whitespace_character != "[":
             # If there is an active parser above us, and the last character is not [, 
             # there is an active item parser on the stack that we did not count yet.

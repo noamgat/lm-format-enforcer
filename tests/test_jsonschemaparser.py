@@ -1,10 +1,12 @@
 import json
+import os
+from contextlib import contextmanager
 from typing import Dict, List, Optional, Union
 from pydantic import BaseModel, Field
 from lmformatenforcer import JsonSchemaParser
 from enum import Enum
 import pytest
-from lmformatenforcer.consts import BACKSLASH, BACKSLASH_ESCAPING_CHARACTERS
+from lmformatenforcer.consts import BACKSLASH, BACKSLASH_ESCAPING_CHARACTERS, CONFIG_ENV_VAR_STRICT_JSON_FIELD_ORDER, CONFIG_ENV_VAR_MAX_CONSECUTIVE_WHITESPACES
 
 from .common import assert_parser_with_string, CharacterNotAllowedException
 
@@ -241,6 +243,71 @@ def test_any_json_object():
     _test_json_schema_parsing_with_string('{"a": 1, "b": 2.2, "c": "c", "d": [1,2,3, null], "e": {"ee": 2}}', None, True)
     _test_json_schema_parsing_with_string("true", None, True)
     _test_json_schema_parsing_with_string('"str"', None, True)
+    
+    
+def test_allof():
+    # Define a schema that includes allOf
+    allof_schema = {
+        "type": "object",
+        "allOf": [
+            {
+                "type": "object",
+                "properties": {
+                    "num": {
+                        "type": "number"
+                    }
+                },
+                "required": ["num"]
+            },
+            {
+                "type": "object",
+                "properties": {
+                    "str": {
+                        "type": "string"
+                    }
+                },
+                "required": ["str"]
+            }
+        ]
+    }
+
+    # Valid cases
+    valid_test_strings = [
+        '{"num": 123, "str": "test"}',
+        '{"num": 0, "str": ""}'
+    ]
+
+    # Invalid cases
+    invalid_test_strings = [
+        '{"num": 123}',  # Missing 'str'
+        '{"str": "test"}',  # Missing 'num'
+        '{"num": "123", "str": "test"}',  # Invalid type for 'num'
+        '{"num": 123, "str": 456}'  # Invalid type for 'str'
+    ]
+
+    for test_string in valid_test_strings:
+        _test_json_schema_parsing_with_string(test_string, allof_schema, True)
+
+    for test_string in invalid_test_strings:
+        _test_json_schema_parsing_with_string(test_string, allof_schema, False)
+
+
+def test_leading_comma():
+    array_of_objects_schema = {
+        "type": "array",
+        "items": {
+            "type": "object",
+            "properties": {
+                "key": {
+                    "type": "string"
+                }
+            },
+            "required": ["key"]
+        }
+    }
+
+    _test_json_schema_parsing_with_string('[{"key": "val"}, {"key": "val2"}]', array_of_objects_schema, True) 
+    _test_json_schema_parsing_with_string('[,{"key": "val"}]', array_of_objects_schema, False)
 
 
 def test_long_json_object():
@@ -354,3 +421,216 @@ def test_comma_cannot_start_list():
     
     _test_json_schema_parsing_with_string(output_ok, FlightRoute.model_json_schema(), True)
     _test_json_schema_parsing_with_string(output_notok, FlightRoute.model_json_schema(), False)
+
+
+def test_comma_cannot_start_list_2():
+    # This also stresses the whitespace handling + max consecutive whitespace concept,
+    # bug reported in https://github.com/noamgat/lm-format-enforcer/issues/80
+    output_notok = """
+    {
+        "airports": [
+           ,"Hamad",
+           ",Doha",
+           ",Bahrain",
+           ",Dammam"
+        ]
+    }"""
+    class FlightRoute(BaseModel):
+        airports: List[str]
+    _test_json_schema_parsing_with_string(output_notok, FlightRoute.model_json_schema(), False)
+
+
+def test_multi_function_schema():
+    # https://github.com/noamgat/lm-format-enforcer/issues/95
+    _multi_function_schema = {
+        "type": "object",
+        "properties": {
+            "name": {
+                "type": "string",
+                "enum": [
+                    "sums",
+                    "concat"
+                ]
+            }
+        },
+        "oneOf": [
+            {
+            "properties": {
+                "name": {
+                "const": "sums"
+                },
+                "arguments": {
+                "properties": {
+                    "a": {
+                    "type": "integer"
+                    },
+                    "b": {
+                    "default": 1,
+                    "type": "integer"
+                    }
+                },
+                "required": [
+                    "a"
+                ],
+                "type": "object"
+                }
+            }
+            },
+            {
+            "properties": {
+                "name": {
+                "const": "concat"
+                },
+                "arguments": {
+                "properties": {
+                    "c": {
+                    "type": "string"
+                    },
+                    "d": {
+                    "default": 1,
+                    "type": "string"
+                    }
+                },
+                "required": [
+                    "c"
+                ],
+                "type": "object"
+                }
+            }
+            }
+        ],
+        "required": [
+            "name",
+            "arguments"
+        ]
+    }
+    valid_examples = [
+        """{"name": "concat", "arguments": {"c": "hello", "d": "world"}}""",
+        """{"name": "sums", "arguments": {"a": 1}}""",
+    ]
+    invalid_examples = [
+        """{"name": "concat", "arguments": {"b": 1}}""",
+        """{"name": "concat", "arguments": {"a": 1}}""",
+        """{"name": "concat"}""",
+        """{"name": "badname", "arguments": {"c": "hello", "b": "world"}}""",
+    ]
+    for example in valid_examples:
+        _test_json_schema_parsing_with_string(example, _multi_function_schema, True)
+    for example in invalid_examples:
+        _test_json_schema_parsing_with_string(example, _multi_function_schema, False)
+
+
+def test_top_level_array_object():
+    test_schema = {
+        "type": "array",
+        "items": {
+            "type": "object",
+            "properties": {
+                "arguments": {
+                    "type": "object"
+                },
+                "name": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "name",
+                "arguments"
+            ]
+        },
+        "minItems": 1
+    }
+    valid_result = """[
+  {
+    "name": "sums",
+    "arguments": {
+      "a": 5,
+      "b": 6
+    }
+  },
+  {
+    "name": "sums",
+    "arguments": {
+      "a": 2,
+      "b": 7
+    }
+  },
+  {
+    "name": "subtraction",
+    "arguments": {
+      "c": 3,
+      "d": 3
+    }
+  }]"""
+    invalid_result = valid_result[:-1]
+    _test_json_schema_parsing_with_string(valid_result, test_schema, True)
+    _test_json_schema_parsing_with_string(invalid_result, test_schema, False)
+
+
+def test_arrays_with_multiple_enums():
+    schema = {
+        "properties": {
+            "array_of_numbers": {
+                "default": [],
+                "description": "An array of numbers",
+                "items": {
+                    "type": "integer",
+                    "enum": [1, 2, 3, 4, 5],
+                },
+                "title": "Items",
+                "type": "array",
+                "maxItems": 2
+            }
+        },
+        "required": ["array_of_numbers"],
+        "type": "object",
+    }
+    
+    _test_json_schema_parsing_with_string('{"array_of_numbers":[4]}', schema, True)
+    _test_json_schema_parsing_with_string('{"array_of_numbers":[4, 1]}', schema, True)
+    _test_json_schema_parsing_with_string('{"array_of_numbers":[4, 4]}', schema, True)
+    _test_json_schema_parsing_with_string('{"array_of_numbers":[1, 2, 3]}', schema, False)
+    _test_json_schema_parsing_with_string('{"array_of_numbers":[6]}', schema, False)
+    _test_json_schema_parsing_with_string('{"array_of_numbers":[1, 6]}', schema, False)
+
+@contextmanager
+def _temp_replace_env_var(env_var_name, temp_value):
+    try:
+        prev_env_var = os.environ.get(env_var_name, None)
+        if prev_env_var is not None:
+            os.environ.pop(env_var_name)
+        if temp_value is not None:
+            os.environ[env_var_name] = str(temp_value)
+        yield None
+    finally:
+        if prev_env_var is None:
+            if temp_value is not None:
+                os.environ.pop(env_var_name)
+        else:
+            os.environ[env_var_name] = prev_env_var
+
+
+def test_control_json_force_field_order_via_env_var():
+    class TwoRequiredModel(BaseModel):
+        a: int
+        b: str
+        c: int = 1
+    schema = TwoRequiredModel.model_json_schema()
+    env_var_name = CONFIG_ENV_VAR_STRICT_JSON_FIELD_ORDER
+    with _temp_replace_env_var(env_var_name, None):
+        # Check that the default is false
+        _test_json_schema_parsing_with_string('{"b": "X", "a": 1}', schema, True)
+    with _temp_replace_env_var(env_var_name, 'True'):
+        # Check that setting to true behaves correctly
+        _test_json_schema_parsing_with_string('{"b": "X", "a": 1}', schema, False)
+        _test_json_schema_parsing_with_string('{"a": 1, "b": "X"}', schema, True)
+
+
+def test_max_whitespaces_via_env_var():
+    env_var_name = CONFIG_ENV_VAR_MAX_CONSECUTIVE_WHITESPACES
+    schema = SampleModel.model_json_schema()
+    base_answer = '{"num":$1}'
+    with _temp_replace_env_var(env_var_name, '8'):
+        for num_spaces in range(12):
+            expect_success = num_spaces <= 8
+            _test_json_schema_parsing_with_string(base_answer.replace("$", " " * num_spaces), schema, expect_success)
