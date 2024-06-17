@@ -36,11 +36,16 @@ class TRTLLMLogitsProcessor:
 
 
 def _build_regular_tokens_list(tokenizer) -> List[Tuple[int, str, bool]]:
+    # There are many classes that can be passed here, this logic should work on all of them.
+    if hasattr(tokenizer, 'get_tokenizer'):
+        tokenizer = tokenizer.get_tokenizer()
+    if hasattr(tokenizer, 'tokenizer'):
+        tokenizer = tokenizer.tokenizer
     token_0 = [tokenizer.encode("0")[-1]]
     regular_tokens = []
-    vocab_size = tokenizer.tokenizer.vocab_size
+    vocab_size = tokenizer.vocab_size
     for token_idx in range(vocab_size):
-        if token_idx in tokenizer.tokenizer.all_special_ids:
+        if token_idx in tokenizer.all_special_ids:
             continue
         # We prepend token 0 and skip the first letter of the result to get a space if the token is a start word.
         tensor_after_0 = torch.tensor(token_0 + [token_idx], dtype=torch.long)
