@@ -1,5 +1,8 @@
 # LM Format Enforcer Changelog
 
+## v0.10.3
+- [#113] TRTLLM Support: Fixing type incompatibility in certain cases / library versions
+
 ## v0.10.2
 - [#100] JsonSchemaParser: Added allOf support
 - [#99] JsonSchemaParser: Fixed edge case that would allow leading comma in JSON Array 
