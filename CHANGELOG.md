@@ -1,5 +1,9 @@
 # LM Format Enforcer Changelog
 
+## v0.10.4
+- Added default max Json array length to help LLMs avoid infinite loops. See README for details.
+- Updated EXLlamaV2 example to updated API
+
 ## v0.10.3
 - [#113] TRTLLM Support: Fixing type incompatibility in certain cases / library versions
 
