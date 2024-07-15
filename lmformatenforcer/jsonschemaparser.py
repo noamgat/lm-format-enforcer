@@ -611,6 +611,9 @@ class ListParsingState(PrimitiveParsingState):
         self.list_member_type = list_member_type
         self.min_items = min_items
         self.max_items = max_items
+        default_max = root.config.max_json_array_length
+        if self.max_items is None and default_max > 0 and (min_items is None or min_items < default_max):
+            self.max_items = default_max
 
     def _clone(self) -> PrimitiveParsingState:
         new = ListParsingState(self.root, self.list_member_type, self.min_items, self.max_items)

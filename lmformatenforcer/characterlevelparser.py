@@ -4,7 +4,8 @@ from dataclasses import dataclass, field
 from typing import Hashable, List, Optional, TypeVar
 from .consts import (COMPLETE_ALPHABET, WHITESPACE_CHARACTERS, DEFAULT_MAX_CONSECUTIVE_WHITESPACES, 
                      DEFAULT_FORCE_JSON_FIELD_ORDER, CONFIG_ENV_VAR_MAX_CONSECUTIVE_WHITESPACES, 
-                     CONFIG_ENV_VAR_STRICT_JSON_FIELD_ORDER)
+                     CONFIG_ENV_VAR_STRICT_JSON_FIELD_ORDER, CONFIG_ENV_VAR_MAX_JSON_ARRAY_LENGTH,
+                     DEFAULT_MAX_JSON_ARRAY_LENGTH)
 
 
 def _parse_bool(s: str) -> bool:
@@ -29,6 +30,10 @@ class CharacterLevelParserConfig:
                                                          DEFAULT_FORCE_JSON_FIELD_ORDER)
     """Whether the JsonSchemaParser will force fields to appear in the 
     order of the 'required' field in the schema"""
+    max_json_array_length: int = _env_or_default_field(CONFIG_ENV_VAR_MAX_JSON_ARRAY_LENGTH,
+                                                       DEFAULT_MAX_JSON_ARRAY_LENGTH)
+    """What is the maximum json array length if not specified by the schema. Helps the LLM
+    avoid infinite loops."""
 
 
 class CharacterLevelParser(abc.ABC):

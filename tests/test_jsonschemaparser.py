@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 from lmformatenforcer import JsonSchemaParser
 from enum import Enum
 import pytest
-from lmformatenforcer.consts import BACKSLASH, BACKSLASH_ESCAPING_CHARACTERS, CONFIG_ENV_VAR_STRICT_JSON_FIELD_ORDER, CONFIG_ENV_VAR_MAX_CONSECUTIVE_WHITESPACES
+from lmformatenforcer.consts import BACKSLASH, BACKSLASH_ESCAPING_CHARACTERS, CONFIG_ENV_VAR_STRICT_JSON_FIELD_ORDER, CONFIG_ENV_VAR_MAX_CONSECUTIVE_WHITESPACES, CONFIG_ENV_VAR_MAX_JSON_ARRAY_LENGTH
 
 from .common import assert_parser_with_string, CharacterNotAllowedException
 
@@ -634,3 +634,42 @@ def test_max_whitespaces_via_env_var():
         for num_spaces in range(12):
             expect_success = num_spaces <= 8
             _test_json_schema_parsing_with_string(base_answer.replace("$", " " * num_spaces), schema, expect_success)
+
+
+def test_max_json_array_length_via_env_var():
+    env_var_name = CONFIG_ENV_VAR_MAX_JSON_ARRAY_LENGTH
+
+    class IntListModel(BaseModel):
+        nums: List[int]
+
+    schema = IntListModel.model_json_schema()
+    with _temp_replace_env_var(env_var_name, '8'):
+        for num_numbers in range(12):
+            instance = IntListModel(nums=list(range(num_numbers)))
+            instance_str = instance.model_dump_json()
+            expect_success = num_numbers <= 8
+            _test_json_schema_parsing_with_string(instance_str, schema, expect_success)
+
+
+def test_top_level_object_inheritance():
+    schema = {
+        "$defs": {
+            "ParentObject": {
+                "properties": {
+                    "child": {
+                        "type": "string"
+                    }
+            },
+            "type": "object"
+            }
+        },
+        "properties": {
+            "parent": {
+                "$ref": "#/$defs/ParentObject"
+            }
+        },
+        "type": "object"
+    }
+    valid_object = '{"parent": {"child": "test"}}'
+    _test_json_schema_parsing_with_string(valid_object, schema, True)
+
