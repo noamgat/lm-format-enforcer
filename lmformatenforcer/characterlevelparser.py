@@ -151,7 +151,10 @@ class SequenceParser(CharacterLevelParser):
             if new_character in parser.get_allowed_characters():
                 updated_parser = parser.add_character(new_character)
                 next_parsers = [updated_parser] + self.parsers[idx+1:]
-                legal_parsers.append(SequenceParser(next_parsers))
+                if len(next_parsers) == 1:
+                    legal_parsers.append(next_parsers[0])
+                else:
+                    legal_parsers.append(SequenceParser(next_parsers))
             if not parser.can_end():
                 break
         if len(legal_parsers) == 1:
