@@ -15,7 +15,8 @@ class TRTLLMLogitsProcessor:
         self.eos_token_id = eos_token_id
 
     def _trim(self, input):
-        return [x for x in input.tolist() if x != self.eos_token_id]
+        return [x for x in input.tolist() if x not in \
+                (self.eos_token_id if isinstance(self.eos_token_id, list) else [self.eos_token_id])]
 
     def __call__(self, step: int, batch_input_ids: List[List[int]], logits: torch.Tensor) -> torch.Tensor:
         for idx in range(len(batch_input_ids)):
