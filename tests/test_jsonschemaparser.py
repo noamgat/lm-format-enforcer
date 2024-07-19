@@ -685,36 +685,93 @@ schema = NumberSchema.model_json_schema()
     '{"value": 1}',
     '{"value": 10}',
     '{"value": 0.1}',
-    '{"value": 1.01}',
+    '{"value": 1.01}', 
     '{"value": -1}',
     '{"value": -0.1}',
     '{"value": 1e5}',
-    '{"value": 1.5e-5}'
+    '{"value": 1.5e-5}',
+    '{"value": 1.5e5}',
+    '{"value": 1.5e+5}',
+    '{"value": -1.5e5}',
+    '{"value": -1.5e-5}',
+    '{"value": -1.5e+5}',
+    '{"value": 0.0}',
+    '{"value": -0.0}',
+    '{"value": 1.0}',
+    '{"value": -1.0}',
+    '{"value": 1.5e0}',
+    '{"value": -1.5e0}',
+    '{"value": 9007199254740991}',  
+    '{"value": -9007199254740991}',
+    '{"value": 1e-323}',
+    '{"value": 1.7976931348623157e+308}',
+    '{"value": 5e-324}',
+    '{"value": 2.2250738585072014e-308}',
 ])
 def test_valid_number_formats(test_input):
     _test_json_schema_parsing_with_string(test_input, schema, True)
 
 
 @pytest.mark.parametrize("test_input", [
-    '{"value": 01}',
+    '{"value": 01}',  
     '{"value": 00.1}',
     '{"value": 01.01}',
     '{"value": -01}',
     '{"value": -00.1}',
     '{"value": 01e5}',
-    '{"value": 00}'
+    '{"value": 00}',
+    '{"value": 00.0}',
+    '{"value": 00.0e5}',
+    '{"value": -00.0e5}',
+    '{"value": 0123}',
+    '{"value": -0123}',
+    '{"value": 01.23e45}',
 ])
 def test_invalid_number_formats_with_leading_zeros(test_input):
     _test_json_schema_parsing_with_string(test_input, schema, False)
 
 
 @pytest.mark.parametrize("test_input, expected_success", [
-    ('{"value": .1}', False),  # Missing leading zero
-    ('{"value": -.1}', False),  # Missing leading zero in negative number
-    ('{"value": 1.}', False),  # Trailing decimal point
-    ('{"value": +1}', False),  # Explicit positive sign
-    ('{"value": 1e}', False),  # Incomplete exponent
-    ('{"value": 1e+}', False),  # Incomplete exponent with sign
+    ('{"value": .1}', False),
+    ('{"value": -.1}', False),
+    ('{"value": 1.}', False),
+    ('{"value": +1}', False),
+    ('{"value": 1e}', False),
+    ('{"value": 1e+}', False),
+    ('{"value": .}', False),
+    ('{"value": -.}', False),
+    ('{"value": e5}', False),
+    ('{"value": .e5}', False),
+    ('{"value": -.e5}', False),
+    ('{"value": 1.5e}', False),
+    ('{"value": 1.5e+}', False),
+    ('{"value": -1.5e}', False),
+    ('{"value": -1.5e+}', False),
+    ('{"value": 1.5e-}', False),
+    ('{"value": -1.5e-}', False),
+    ('{"value": 1e-}', False),
+    ('{"value": -1e-}', False),
+    ('{"value": 1e+1e2}', False),
+    ('{"value": 1e1.5}', False),
+    ('{"value": 1e-1.5}', False),
+    ('{"value": 1e1a}', False),
+    ('{"value": 1e-1a}', False),
+    ('{"value": 0x123}', False),
+    ('{"value": 0b1010}', False),
+    ('{"value": 0o123}', False),
+    ('{"value": Infinity}', False),
+    ('{"value": -Infinity}', False),
+    ('{"value": NaN}', False),
+    ('{"value": 1,000}', False),
+    ('{"value": 1_000}', False),
+    ('{"value": 1.2.3}', False),
+    ('{"value": 1e2e3}', False),
+    ('{"value": 1e+2e-3}', False),
+    ('{"value": --1}', False),
+    ('{"value": ++1}', False),
+    ('{"value": +-1}', False),
+    ('{"value": 9007199254740992}', True),
+    ('{"value": -9007199254740992}', True),
 ])
 def test_number_edge_cases(test_input, expected_success):
     _test_json_schema_parsing_with_string(test_input, schema, expected_success)
