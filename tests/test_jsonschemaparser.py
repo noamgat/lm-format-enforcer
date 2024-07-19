@@ -673,3 +673,48 @@ def test_top_level_object_inheritance():
     valid_object = '{"parent": {"child": "test"}}'
     _test_json_schema_parsing_with_string(valid_object, schema, True)
 
+
+class NumberSchema(BaseModel):
+    value: float = Field(..., type="number")
+
+
+schema = NumberSchema.model_json_schema()
+
+@pytest.mark.parametrize("test_input", [
+    '{"value": 0}',
+    '{"value": 1}',
+    '{"value": 10}',
+    '{"value": 0.1}',
+    '{"value": 1.01}',
+    '{"value": -1}',
+    '{"value": -0.1}',
+    '{"value": 1e5}',
+    '{"value": 1.5e-5}'
+])
+def test_valid_number_formats(test_input):
+    _test_json_schema_parsing_with_string(test_input, schema, True)
+
+
+@pytest.mark.parametrize("test_input", [
+    '{"value": 01}',
+    '{"value": 00.1}',
+    '{"value": 01.01}',
+    '{"value": -01}',
+    '{"value": -00.1}',
+    '{"value": 01e5}',
+    '{"value": 00}'
+])
+def test_invalid_number_formats_with_leading_zeros(test_input):
+    _test_json_schema_parsing_with_string(test_input, schema, False)
+
+
+@pytest.mark.parametrize("test_input, expected_success", [
+    ('{"value": .1}', False),  # Missing leading zero
+    ('{"value": -.1}', False),  # Missing leading zero in negative number
+    ('{"value": 1.}', False),  # Trailing decimal point
+    ('{"value": +1}', False),  # Explicit positive sign
+    ('{"value": 1e}', False),  # Incomplete exponent
+    ('{"value": 1e+}', False),  # Incomplete exponent with sign
+])
+def test_number_edge_cases(test_input, expected_success):
+    _test_json_schema_parsing_with_string(test_input, schema, expected_success)
