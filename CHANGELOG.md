@@ -1,5 +1,10 @@
 # LM Format Enforcer Changelog
 
+## v0.10.5
+- SequenceParser performance optimization
+- JsonSchemaParser: number parsing supports exponents
+- Supporting tokenizers with multiple eos token ids
+
 ## v0.10.4
 - Added default max Json array length to help LLMs avoid infinite loops. See README for details.
 - Updated EXLlamaV2 example to updated API
