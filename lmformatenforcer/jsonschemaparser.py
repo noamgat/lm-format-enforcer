@@ -438,12 +438,16 @@ class NumberParsingState(PrimitiveParsingState):
         self.allow_floating_point = allow_floating_point
         self.seen_decimal_point = False
         self.seen_whitespace_after_digits = False
+        self.seen_exponent = False
+        self.seen_digit = False
 
     def _clone(self) -> "NumberParsingState":
         clone = NumberParsingState(self.root, self.allow_floating_point)
         clone.parsed_string = self.parsed_string
         clone.seen_decimal_point = self.seen_decimal_point
         clone.seen_whitespace_after_digits = self.seen_whitespace_after_digits
+        clone.seen_exponent = self.seen_exponent
+        clone.seen_digit = self.seen_digit
         return clone
     
     def add_character(self, new_character: str) -> CharacterLevelParser:
@@ -455,7 +459,17 @@ class NumberParsingState(PrimitiveParsingState):
                 self.seen_whitespace_after_digits = True
             return self
         if new_character == ".":
+            if not self.parsed_string or len(self.parsed_string) == 1:
+                raise LMFormatEnforcerException("Numbers cannot start with a decimal point.")
+            if self.seen_decimal_point:
+                raise LMFormatEnforcerException("Numbers cannot contain more than two decimal points.")
             self.seen_decimal_point = True
+        elif new_character in "eE":
+            if self.seen_exponent or not self.seen_digit:
+                raise LMFormatEnforcerException("Invalid number format")
+            self.seen_exponent = True
+        elif new_character.isdigit():
+            self.seen_digit = True
         return self
 
     def get_allowed_characters(self) -> str:
@@ -464,13 +478,23 @@ class NumberParsingState(PrimitiveParsingState):
         allowed_characters = "0123456789"
         if not self.parsed_string:
             allowed_characters += "-" + WHITESPACE_CHARACTERS
-        if self.allow_floating_point and not self.seen_decimal_point:
+        if self.parsed_string and len(self.parsed_string) == 1 and self.parsed_string[0] == "0":
+            allowed_characters = WHITESPACE_CHARACTERS
+        if self.parsed_string and len(self.parsed_string) == 2 and self.parsed_string == "-0":
+            allowed_characters = "." + WHITESPACE_CHARACTERS
+        if self.parsed_string and self.parsed_string[-1] in "eE":
+            allowed_characters += "-+"
+        if self.seen_digit and not self.seen_exponent:
+            allowed_characters += "eE"
+        if self.allow_floating_point and not self.seen_decimal_point and self.seen_digit and not self.seen_exponent:
             allowed_characters += "."
         if self.parsed_string and self.parsed_string[-1].isdigit():
             allowed_characters += WHITESPACE_CHARACTERS
         return allowed_characters
 
     def can_end(self) -> bool:
+        if self.seen_exponent and self.parsed_string[-1] in "eE+-":
+            return False
         return bool(self.parsed_string) and (self.parsed_string[-1].isdigit() or self.seen_whitespace_after_digits)
 
 

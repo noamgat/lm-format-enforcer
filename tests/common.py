@@ -55,8 +55,8 @@ def assert_parser_with_string_token_enforcer(string: str, parser: CharacterLevel
     # the parser the most.
     target_token_array = _tokenizer.encode(prompt + string)
     eos_token_id = _tokenizer.eos_token_id
-    if eos_token_id is None:
-        raise ValueError("Tokenizer does not have an EOS token")
+    if not eos_token_id:
+        raise ValueError(f"Tokenizer does not have {'an EOS token' if eos_token_id is None else 'EOS tokens'}")
     
     token_enforcer = TokenEnforcer(_tokenizer_data, parser)
     # The token enforcer is stateful - it keeps track of the parsing state as tokens arrive on a token by token basis.
@@ -82,7 +82,7 @@ def assert_parser_with_string_token_enforcer(string: str, parser: CharacterLevel
                     return  # Test success
         else:
             # Reached the end of the sequence, check that ending state matches expected ending state
-            can_end = eos_token_id in allowed_tokens
+            can_end = any(token in allowed_tokens for token in (eos_token_id if isinstance(eos_token_id, list) else [eos_token_id]))
             if can_end and not expect_success:
                 raise ValueError("Parser succeeded when it should have failed")
             if not can_end and expect_success:

@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 import sys
-from typing import Callable, Dict, Hashable, List, Optional, Tuple
+from typing import Callable, Dict, Hashable, List, Optional, Tuple, Union
 import logging
 
 from .exceptions import LMFormatEnforcerException
@@ -14,13 +14,13 @@ class TokenEnforcerTokenizerData:
     def __init__(self, 
                  regular_tokens: List[Tuple[int, str, bool]], 
                  decoder: Callable[[List[int]], str],
-                 eos_token_id: int):
+                 eos_token_id: Union[int, List[int]]):
         """
         Create the tokenizer data that the TokenEnforcer needs. This can be reused for multiple TokenEnforcers if they work with the same tokenizer.
         :param regular_tokens: A list of tuples (token_id, token_string, is_new_word_token) for all the regular (not special) tokens in the tokenizer vocabulary.
         Note that token_string is expected to include leading / trailing whitespaces if relevant.
         :param decoder: A function that decodes a list of token ids into a string.
-        :param eos_token_id: The token id of the end-of-string token.
+        :param eos_token_id: The token id(s) of the end-of-string token(s).
         """
         self.regular_tokens = regular_tokens
         self.tokenizer_tree = TokenizerPrefixTree(regular_tokens)
@@ -95,7 +95,7 @@ class TokenEnforcer:
             shortcut_key = state.parser.shortcut_key()
             self._collect_allowed_tokens(state.parser, self.tokenizer_tree.root, allowed_tokens, shortcut_key)
             if state.parser.can_end():
-                allowed_tokens.append(self.eos_token_id)
+                allowed_tokens.extend(self.eos_token_id if isinstance(self.eos_token_id, list) else [self.eos_token_id])
             if not allowed_tokens:
                 raise ValueError(f"Parser reached state with no allowed tokens")
             # root_state = next(state for state in self.prefix_states.values() if state.parser == self.root_parser)
@@ -115,7 +115,7 @@ class TokenEnforcer:
                               "Terminating the parser. Please open an issue at \n"
                               "https://github.com/noamgat/lm-format-enforcer/issues with the prefix and "
                               "CharacterLevelParser parameters")
-            state.allowed_tokens = [self.eos_token_id]
+            state.allowed_tokens = self.eos_token_id if isinstance(self.eos_token_id, list) else [self.eos_token_id]
 
     def _collect_allowed_tokens(self, parser: CharacterLevelParser, tree_node: TokenizerPrefixTreeNode, allowed_tokens: List[int], shortcut_key: Optional[Hashable]):
         allowed_tokens.extend(tree_node.tokens)
