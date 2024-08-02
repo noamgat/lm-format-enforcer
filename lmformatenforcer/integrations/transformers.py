@@ -1,3 +1,4 @@
+import functools
 from typing import Any, Callable, List, Tuple, Union
 try:
     from transformers import AutoModelForCausalLM
@@ -66,12 +67,15 @@ def _build_regular_tokens_list(tokenizer: PreTrainedTokenizerBase) -> List[Tuple
     return regular_tokens
 
 
+def _decode_function(tokenizer: PreTrainedTokenizerBase, tokens: List[int]) -> str:
+    decoded = tokenizer.decode(tokens)
+    cleaned = decoded.rstrip('�')
+    return cleaned
+
+
 def build_token_enforcer_tokenizer_data(tokenizer: PreTrainedTokenizerBase) -> TokenEnforcerTokenizerData:
     regular_tokens = _build_regular_tokens_list(tokenizer)
-    def decode_fn(tokens: List[int]) -> str:
-        decoded = tokenizer.decode(tokens)
-        cleaned = decoded.rstrip('�')
-        return cleaned
+    decode_fn = functools.partial(_decode_function, tokenizer)
     return TokenEnforcerTokenizerData(regular_tokens, decode_fn, tokenizer.eos_token_id)
 
 
