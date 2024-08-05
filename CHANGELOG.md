@@ -1,5 +1,8 @@
 # LM Format Enforcer Changelog
 
+## v0.10.6
+- Pickling improvements for easier multiprocessing support
+
 ## v0.10.5
 - SequenceParser performance optimization
 - JsonSchemaParser: number parsing supports exponents
