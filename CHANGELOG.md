@@ -1,5 +1,8 @@
 # LM Format Enforcer Changelog
 
+## v0.10.7
+- [135] Updated Haystack V2 integration with latest API
+
 ## v0.10.6
 - Pickling improvements for easier multiprocessing support
 
