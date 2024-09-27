@@ -1,6 +1,7 @@
 try:
     import torch
     import vllm
+    from vllm.transformers_utils.tokenizer import MistralTokenizer
     from transformers import PreTrainedTokenizerBase
 except ImportError:
     raise ImportError('vllm is not installed. Please install it with "pip install vllm"')
@@ -35,6 +36,8 @@ def build_vllm_token_enforcer_tokenizer_data(tokenizer: Union[vllm.LLM, PreTrain
     # There are many classes that can be passed here, this logic should work on all of them.
     if hasattr(tokenizer, 'get_tokenizer'):
         tokenizer = tokenizer.get_tokenizer()
+    if isinstance(tokenizer, MistralTokenizer):
+        return build_token_enforcer_tokenizer_data(tokenizer)
     if hasattr(tokenizer, 'tokenizer'):
         tokenizer = tokenizer.tokenizer
     return build_token_enforcer_tokenizer_data(tokenizer)
