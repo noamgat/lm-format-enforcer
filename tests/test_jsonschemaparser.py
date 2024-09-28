@@ -6,19 +6,37 @@ from pydantic import BaseModel, Field
 from lmformatenforcer import JsonSchemaParser
 from enum import Enum
 import pytest
-from lmformatenforcer.consts import BACKSLASH, BACKSLASH_ESCAPING_CHARACTERS, CONFIG_ENV_VAR_STRICT_JSON_FIELD_ORDER, CONFIG_ENV_VAR_MAX_CONSECUTIVE_WHITESPACES, CONFIG_ENV_VAR_MAX_JSON_ARRAY_LENGTH
+from lmformatenforcer.characterlevelparser import CharacterLevelParserConfig
+from lmformatenforcer.consts import BACKSLASH, BACKSLASH_ESCAPING_CHARACTERS, COMPLETE_ALPHABET, CONFIG_ENV_VAR_STRICT_JSON_FIELD_ORDER, CONFIG_ENV_VAR_MAX_CONSECUTIVE_WHITESPACES, CONFIG_ENV_VAR_MAX_JSON_ARRAY_LENGTH
 
 from .common import assert_parser_with_string, CharacterNotAllowedException
 
 
-def _test_json_schema_parsing_with_string(string: str, schema_dict: Optional[dict], expect_success: bool, profile_file_path: Optional[str] = None):
-    parser = JsonSchemaParser(schema_dict)
+def _test_json_schema_parsing_with_string(string: str, 
+                                          schema_dict: Optional[dict], 
+                                          expect_success: bool, 
+                                          profile_file_path: Optional[str] = None,
+                                          ensure_ascii_in_json_dumps: bool = False):
+    alphabet = COMPLETE_ALPHABET
+    for letter in set(string):
+        if letter not in alphabet and letter != '\n':
+            alphabet += letter
+    if expect_success:
+        try:
+            minified = json.dumps(json.loads(string), separators=(',', ':'), ensure_ascii=False)
+            for letter in set(minified):
+                if letter not in alphabet and letter != '\n':
+                    alphabet += letter
+        except:
+            pass
+    config = CharacterLevelParserConfig(alphabet=alphabet)
+    parser = JsonSchemaParser(schema_dict, config=config)
     assert_parser_with_string(string, parser, expect_success, profile_file_path)
     if expect_success:
         # If expecting success, also check minified and pretty-printed
-        minified = json.dumps(json.loads(string), separators=(',', ':'))
+        minified = json.dumps(json.loads(string), separators=(',', ':'), ensure_ascii=ensure_ascii_in_json_dumps)
         assert_parser_with_string(minified, parser, expect_success)
-        pretty_printed = json.dumps(json.loads(string), indent=2)
+        pretty_printed = json.dumps(json.loads(string), indent=2, ensure_ascii=ensure_ascii_in_json_dumps)
         assert_parser_with_string(pretty_printed, parser, expect_success)
 
 
@@ -190,22 +208,22 @@ def test_list_length_limitations():
 def test_string_escaping():
     for escaping_character in BACKSLASH_ESCAPING_CHARACTERS:
         test_string = f'{{"num":1,"message":"hello {BACKSLASH}{escaping_character} world"}}'
-        _test_json_schema_parsing_with_string(test_string, SampleModel.model_json_schema(), True)
+        _test_json_schema_parsing_with_string(test_string, SampleModel.model_json_schema(), True, ensure_ascii_in_json_dumps=True)
     for non_escaping_character in 'a1?':
         test_string = f'{{"num":1,"message":"hello {BACKSLASH}{non_escaping_character} world"}}'
-        _test_json_schema_parsing_with_string(test_string, SampleModel.model_json_schema(), False)
+        _test_json_schema_parsing_with_string(test_string, SampleModel.model_json_schema(), False, ensure_ascii_in_json_dumps=True)
 
     # Unicode
     test_string = f'{{"num":1,"message":"hello {BACKSLASH}uf9f0 world"}}'
-    _test_json_schema_parsing_with_string(test_string, SampleModel.model_json_schema(), True)
+    _test_json_schema_parsing_with_string(test_string, SampleModel.model_json_schema(), True, ensure_ascii_in_json_dumps=True)
 
     # Not enough unicode digits
     test_string = f'{{"num":1,"message":"hello {BACKSLASH}uf9f world"}}'
-    _test_json_schema_parsing_with_string(test_string, SampleModel.model_json_schema(), False)
+    _test_json_schema_parsing_with_string(test_string, SampleModel.model_json_schema(), False, ensure_ascii_in_json_dumps=True)
 
     # Unicode digit outside of hex range
     test_string = f'{{"num":1,"message":"hello {BACKSLASH}uf9fP world"}}'
-    _test_json_schema_parsing_with_string(test_string, SampleModel.model_json_schema(), False)
+    _test_json_schema_parsing_with_string(test_string, SampleModel.model_json_schema(), False, ensure_ascii_in_json_dumps=True)
 
 
 def test_comma_after_all_object_keys_fails():
