@@ -2,12 +2,12 @@ import cProfile
 from pstats import Stats
 from typing import Optional
 from transformers import AutoTokenizer, PreTrainedTokenizerBase
-
 from lmformatenforcer import CharacterLevelParser
 from lmformatenforcer.exceptions import LMFormatEnforcerException
 from lmformatenforcer.tokenenforcer import TokenEnforcer, TokenEnforcerTokenizerData
 from lmformatenforcer.integrations.transformers import build_token_enforcer_tokenizer_data
-
+import logging
+            
 
 _tokenizer: Optional[PreTrainedTokenizerBase] = None
 _tokenizer_data: Optional[TokenEnforcerTokenizerData] = None
