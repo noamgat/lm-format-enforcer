@@ -2,12 +2,12 @@ import cProfile
 from pstats import Stats
 from typing import Optional
 from transformers import AutoTokenizer, PreTrainedTokenizerBase
-
 from lmformatenforcer import CharacterLevelParser
 from lmformatenforcer.exceptions import LMFormatEnforcerException
 from lmformatenforcer.tokenenforcer import TokenEnforcer, TokenEnforcerTokenizerData
 from lmformatenforcer.integrations.transformers import build_token_enforcer_tokenizer_data
-
+import logging
+            
 
 _tokenizer: Optional[PreTrainedTokenizerBase] = None
 _tokenizer_data: Optional[TokenEnforcerTokenizerData] = None
@@ -40,10 +40,19 @@ def assert_parser_with_string_direct(string: str, parser: CharacterLevelParser, 
 def assert_parser_with_string_token_enforcer(string: str, parser: CharacterLevelParser, expect_success: bool, profile_file_path: Optional[str]):
     global _tokenizer
     if _tokenizer is None:
-        model_id = 'TheBloke/Llama-2-7b-Chat-GPTQ'
+        model_id = 'Qwen/Qwen2.5-72B-Instruct'
         _tokenizer = AutoTokenizer.from_pretrained(model_id)
-
+    
     global _tokenizer_data
+
+    # For testing, we make sure that all letters exist individually in the tokenizer
+    encoded_0 = _tokenizer.encode("0")
+    for word in set(string):
+        encoded_word = _tokenizer.encode(word)
+        if len(encoded_word) > len(encoded_0):
+            logging.basicConfig(level=logging.INFO)
+            logging.warning("Encountered out-of-tokenizer character, LMFE does not deal with this well")
+    
     if _tokenizer_data is None:
         _tokenizer_data = build_token_enforcer_tokenizer_data(_tokenizer)
         
