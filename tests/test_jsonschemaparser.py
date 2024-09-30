@@ -798,3 +798,8 @@ def test_chinese_oneof_schema():
     test_schema = { "$schema": "http://json-schema.org/draft-07/schema#", "type": "array", "items": { "oneOf": [ { "type": "object", "properties": { "trigger": { "type": "string" }, "event_type": { "enum": [ "公司上市" ] }, "arguments": { "type": "array", "items": { "type": "object", "properties": { "role": { "enum": [ "上市公司", "证券代码", "环节", "披露时间", "发行价格", "事件时间", "市值", "募资金额" ] }, "argument": { "type": "string" } }, "required": [ "role", "argument" ] } } }, "required": [ "trigger", "event_type", "arguments" ] }, { "type": "object", "properties": { "trigger": { "type": "string" }, "event_type": { "enum": [ "被约谈" ] }, "arguments": { "type": "array", "items": { "type": "object", "properties": { "role": { "enum": [ "公司名称", "披露时间", "被约谈时间", "约谈机构" ] }, "argument": { "type": "string" } }, "required": [ "role", "argument" ] } } }, "required": [ "trigger", "event_type", "arguments" ] } ] } }
     correct_output = """[{"trigger": "IPO", "event_type": "公司上市", "arguments": [{"role": "上市公司", "argument": "理想汽车"}, {"role": "披露时间", "argument": "30日"}, {"role": "发行价格", "argument": "8-10美元"}, {"role": "环节", "argument": "筹备上市"}]}]"""
     _test_json_schema_parsing_with_string(correct_output, test_schema, True)
+
+def test_additional_properties():
+    schema = {'type': 'object', 'properties': {'snippets': {'title': 'snippets', 'type': 'string'}, 'overall_sentiment': {'title': 'overall_sentiment', 'type': 'string'}}, 'required': ['snippets', 'overall_sentiment'], 'additionalProperties': False, 'definitions': {}} 
+    completion = """{"snippets": "What a beautiful day", "overall_sentiment": "Positive"}"""
+    _test_json_schema_parsing_with_string(completion, schema, True)
