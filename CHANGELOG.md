@@ -1,5 +1,8 @@
 # LM Format Enforcer Changelog
 
+## v0.10.9
+- Added new sample: [Extracting structured data from vision models](https://github.com/noamgat/lm-format-enforcer/blob/main/samples/colab_llama32_vision_enforcer.ipynb)
+
 ## v0.10.8
 - Fixed support for tokenizers with larger vocabularies than the models. Enables visual models such as Llama3.2
 - JsonSchemaParser: Fixed additionalProperies and oneOf edge cases

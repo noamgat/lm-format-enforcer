@@ -79,6 +79,7 @@ Integrates into existing pipelines | ✅ | ❌ | ❌ | ✅
 Optional JSON Fields | ✅ |  ❌ | ❌ | ❌
 LLM Controls JSON field ordering and whitespace | ✅ | ❌ | ❌ | ❌
 JSON Schema with recursive classes | ✅ | ❌ | ✅ | ❌
+Visual model support | [✅](https://github.com/noamgat/lm-format-enforcer/blob/main/samples/colab_llama32_vision_enforcer.ipynb) |  ✅ | ❌ | ❌
 
 Spotted a mistake? Library updated with new capabilities? [Open an issue!](https://github.com/noamgat/lm-format-enforcer/issues)
 
