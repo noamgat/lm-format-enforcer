@@ -1,5 +1,9 @@
 # LM Format Enforcer Changelog
 
+## v0.10.8
+- Fixed support for tokenizers with larger vocabularies than the models. Enables visual models such as Llama3.2
+- JsonSchemaParser: Fixed additionalProperies and oneOf edge cases
+
 ## v0.10.7
 - [135] Updated Haystack V2 integration with latest API
 
