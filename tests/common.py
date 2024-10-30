@@ -2,12 +2,12 @@ import cProfile
 from pstats import Stats
 from typing import Optional
 from transformers import AutoTokenizer, PreTrainedTokenizerBase
-
 from lmformatenforcer import CharacterLevelParser
 from lmformatenforcer.exceptions import LMFormatEnforcerException
 from lmformatenforcer.tokenenforcer import TokenEnforcer, TokenEnforcerTokenizerData
 from lmformatenforcer.integrations.transformers import build_token_enforcer_tokenizer_data
-
+import logging
+            
 
 _tokenizer: Optional[PreTrainedTokenizerBase] = None
 _tokenizer_data: Optional[TokenEnforcerTokenizerData] = None
@@ -40,10 +40,19 @@ def assert_parser_with_string_direct(string: str, parser: CharacterLevelParser, 
 def assert_parser_with_string_token_enforcer(string: str, parser: CharacterLevelParser, expect_success: bool, profile_file_path: Optional[str]):
     global _tokenizer
     if _tokenizer is None:
-        model_id = 'TheBloke/Llama-2-7b-Chat-GPTQ'
+        model_id = 'Qwen/Qwen2.5-72B-Instruct'
         _tokenizer = AutoTokenizer.from_pretrained(model_id)
-
+    
     global _tokenizer_data
+
+    # For testing, we make sure that all letters exist individually in the tokenizer
+    encoded_0 = _tokenizer.encode("0")
+    for word in set(string):
+        encoded_word = _tokenizer.encode(word)
+        if len(encoded_word) > len(encoded_0):
+            logging.basicConfig(level=logging.INFO)
+            logging.warning("Encountered out-of-tokenizer character, LMFE does not deal with this well")
+    
     if _tokenizer_data is None:
         _tokenizer_data = build_token_enforcer_tokenizer_data(_tokenizer)
         
@@ -55,8 +64,8 @@ def assert_parser_with_string_token_enforcer(string: str, parser: CharacterLevel
     # the parser the most.
     target_token_array = _tokenizer.encode(prompt + string)
     eos_token_id = _tokenizer.eos_token_id
-    if eos_token_id is None:
-        raise ValueError("Tokenizer does not have an EOS token")
+    if not eos_token_id:
+        raise ValueError(f"Tokenizer does not have {'an EOS token' if eos_token_id is None else 'EOS tokens'}")
     
     token_enforcer = TokenEnforcer(_tokenizer_data, parser)
     # The token enforcer is stateful - it keeps track of the parsing state as tokens arrive on a token by token basis.
@@ -82,7 +91,7 @@ def assert_parser_with_string_token_enforcer(string: str, parser: CharacterLevel
                     return  # Test success
         else:
             # Reached the end of the sequence, check that ending state matches expected ending state
-            can_end = eos_token_id in allowed_tokens
+            can_end = any(token in allowed_tokens for token in (eos_token_id if isinstance(eos_token_id, list) else [eos_token_id]))
             if can_end and not expect_success:
                 raise ValueError("Parser succeeded when it should have failed")
             if not can_end and expect_success:

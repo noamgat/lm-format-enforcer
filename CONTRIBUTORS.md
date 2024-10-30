@@ -14,6 +14,7 @@
 * [turboderp](https://github.com/turboderp) (ExLlamaV2 improvements) 
 * [Ari Weinstein](https://github.com/AriX) (JSONSchemaParser performance improvements)
 * [NJordan72](https://github.com/NJordan72) (JSONSchemaParser Bug Fixes)
+* [Andrew Wang](https://github.com/aw632) (JSONSchemaParser exponent parsing and multi eos token support)
 
 ## I would like to join this list. How can I help the project?
 

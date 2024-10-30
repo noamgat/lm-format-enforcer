@@ -6,19 +6,37 @@ from pydantic import BaseModel, Field
 from lmformatenforcer import JsonSchemaParser
 from enum import Enum
 import pytest
-from lmformatenforcer.consts import BACKSLASH, BACKSLASH_ESCAPING_CHARACTERS, CONFIG_ENV_VAR_STRICT_JSON_FIELD_ORDER, CONFIG_ENV_VAR_MAX_CONSECUTIVE_WHITESPACES
+from lmformatenforcer.characterlevelparser import CharacterLevelParserConfig
+from lmformatenforcer.consts import BACKSLASH, BACKSLASH_ESCAPING_CHARACTERS, COMPLETE_ALPHABET, CONFIG_ENV_VAR_STRICT_JSON_FIELD_ORDER, CONFIG_ENV_VAR_MAX_CONSECUTIVE_WHITESPACES, CONFIG_ENV_VAR_MAX_JSON_ARRAY_LENGTH
 
 from .common import assert_parser_with_string, CharacterNotAllowedException
 
 
-def _test_json_schema_parsing_with_string(string: str, schema_dict: Optional[dict], expect_success: bool, profile_file_path: Optional[str] = None):
-    parser = JsonSchemaParser(schema_dict)
+def _test_json_schema_parsing_with_string(string: str, 
+                                          schema_dict: Optional[dict], 
+                                          expect_success: bool, 
+                                          profile_file_path: Optional[str] = None,
+                                          ensure_ascii_in_json_dumps: bool = False):
+    alphabet = COMPLETE_ALPHABET
+    for letter in set(string):
+        if letter not in alphabet and letter != '\n':
+            alphabet += letter
+    if expect_success:
+        try:
+            minified = json.dumps(json.loads(string), separators=(',', ':'), ensure_ascii=False)
+            for letter in set(minified):
+                if letter not in alphabet and letter != '\n':
+                    alphabet += letter
+        except:
+            pass
+    config = CharacterLevelParserConfig(alphabet=alphabet)
+    parser = JsonSchemaParser(schema_dict, config=config)
     assert_parser_with_string(string, parser, expect_success, profile_file_path)
     if expect_success:
         # If expecting success, also check minified and pretty-printed
-        minified = json.dumps(json.loads(string), separators=(',', ':'))
+        minified = json.dumps(json.loads(string), separators=(',', ':'), ensure_ascii=ensure_ascii_in_json_dumps)
         assert_parser_with_string(minified, parser, expect_success)
-        pretty_printed = json.dumps(json.loads(string), indent=2)
+        pretty_printed = json.dumps(json.loads(string), indent=2, ensure_ascii=ensure_ascii_in_json_dumps)
         assert_parser_with_string(pretty_printed, parser, expect_success)
 
 
@@ -190,22 +208,22 @@ def test_list_length_limitations():
 def test_string_escaping():
     for escaping_character in BACKSLASH_ESCAPING_CHARACTERS:
         test_string = f'{{"num":1,"message":"hello {BACKSLASH}{escaping_character} world"}}'
-        _test_json_schema_parsing_with_string(test_string, SampleModel.model_json_schema(), True)
+        _test_json_schema_parsing_with_string(test_string, SampleModel.model_json_schema(), True, ensure_ascii_in_json_dumps=True)
     for non_escaping_character in 'a1?':
         test_string = f'{{"num":1,"message":"hello {BACKSLASH}{non_escaping_character} world"}}'
-        _test_json_schema_parsing_with_string(test_string, SampleModel.model_json_schema(), False)
+        _test_json_schema_parsing_with_string(test_string, SampleModel.model_json_schema(), False, ensure_ascii_in_json_dumps=True)
 
     # Unicode
     test_string = f'{{"num":1,"message":"hello {BACKSLASH}uf9f0 world"}}'
-    _test_json_schema_parsing_with_string(test_string, SampleModel.model_json_schema(), True)
+    _test_json_schema_parsing_with_string(test_string, SampleModel.model_json_schema(), True, ensure_ascii_in_json_dumps=True)
 
     # Not enough unicode digits
     test_string = f'{{"num":1,"message":"hello {BACKSLASH}uf9f world"}}'
-    _test_json_schema_parsing_with_string(test_string, SampleModel.model_json_schema(), False)
+    _test_json_schema_parsing_with_string(test_string, SampleModel.model_json_schema(), False, ensure_ascii_in_json_dumps=True)
 
     # Unicode digit outside of hex range
     test_string = f'{{"num":1,"message":"hello {BACKSLASH}uf9fP world"}}'
-    _test_json_schema_parsing_with_string(test_string, SampleModel.model_json_schema(), False)
+    _test_json_schema_parsing_with_string(test_string, SampleModel.model_json_schema(), False, ensure_ascii_in_json_dumps=True)
 
 
 def test_comma_after_all_object_keys_fails():
@@ -634,3 +652,154 @@ def test_max_whitespaces_via_env_var():
         for num_spaces in range(12):
             expect_success = num_spaces <= 8
             _test_json_schema_parsing_with_string(base_answer.replace("$", " " * num_spaces), schema, expect_success)
+
+
+def test_max_json_array_length_via_env_var():
+    env_var_name = CONFIG_ENV_VAR_MAX_JSON_ARRAY_LENGTH
+
+    class IntListModel(BaseModel):
+        nums: List[int]
+
+    schema = IntListModel.model_json_schema()
+    with _temp_replace_env_var(env_var_name, '8'):
+        for num_numbers in range(12):
+            instance = IntListModel(nums=list(range(num_numbers)))
+            instance_str = instance.model_dump_json()
+            expect_success = num_numbers <= 8
+            _test_json_schema_parsing_with_string(instance_str, schema, expect_success)
+
+
+def test_top_level_object_inheritance():
+    schema = {
+        "$defs": {
+            "ParentObject": {
+                "properties": {
+                    "child": {
+                        "type": "string"
+                    }
+            },
+            "type": "object"
+            }
+        },
+        "properties": {
+            "parent": {
+                "$ref": "#/$defs/ParentObject"
+            }
+        },
+        "type": "object"
+    }
+    valid_object = '{"parent": {"child": "test"}}'
+    _test_json_schema_parsing_with_string(valid_object, schema, True)
+
+
+class NumberSchema(BaseModel):
+    value: float = Field(..., type="number")
+
+
+schema = NumberSchema.model_json_schema()
+
+@pytest.mark.parametrize("test_input", [
+    '{"value": 0}',
+    '{"value": 1}',
+    '{"value": 10}',
+    '{"value": 0.1}',
+    '{"value": 1.01}', 
+    '{"value": -1}',
+    '{"value": -0.1}',
+    '{"value": 1e5}',
+    '{"value": 1.5e-5}',
+    '{"value": 1.5e5}',
+    '{"value": 1.5e+5}',
+    '{"value": -1.5e5}',
+    '{"value": -1.5e-5}',
+    '{"value": -1.5e+5}',
+    '{"value": 0.0}',
+    '{"value": -0.0}',
+    '{"value": 1.0}',
+    '{"value": -1.0}',
+    '{"value": 1.5e0}',
+    '{"value": -1.5e0}',
+    '{"value": 9007199254740991}',  
+    '{"value": -9007199254740991}',
+    '{"value": 1e-323}',
+    '{"value": 1.7976931348623157e+308}',
+    '{"value": 5e-324}',
+    '{"value": 2.2250738585072014e-308}',
+])
+def test_valid_number_formats(test_input):
+    _test_json_schema_parsing_with_string(test_input, schema, True)
+
+
+@pytest.mark.parametrize("test_input", [
+    '{"value": 01}',  
+    '{"value": 00.1}',
+    '{"value": 01.01}',
+    '{"value": -01}',
+    '{"value": -00.1}',
+    '{"value": 01e5}',
+    '{"value": 00}',
+    '{"value": 00.0}',
+    '{"value": 00.0e5}',
+    '{"value": -00.0e5}',
+    '{"value": 0123}',
+    '{"value": -0123}',
+    '{"value": 01.23e45}',
+])
+def test_invalid_number_formats_with_leading_zeros(test_input):
+    _test_json_schema_parsing_with_string(test_input, schema, False)
+
+
+@pytest.mark.parametrize("test_input, expected_success", [
+    ('{"value": .1}', False),
+    ('{"value": -.1}', False),
+    ('{"value": 1.}', False),
+    ('{"value": +1}', False),
+    ('{"value": 1e}', False),
+    ('{"value": 1e+}', False),
+    ('{"value": .}', False),
+    ('{"value": -.}', False),
+    ('{"value": e5}', False),
+    ('{"value": .e5}', False),
+    ('{"value": -.e5}', False),
+    ('{"value": 1.5e}', False),
+    ('{"value": 1.5e+}', False),
+    ('{"value": -1.5e}', False),
+    ('{"value": -1.5e+}', False),
+    ('{"value": 1.5e-}', False),
+    ('{"value": -1.5e-}', False),
+    ('{"value": 1e-}', False),
+    ('{"value": -1e-}', False),
+    ('{"value": 1e+1e2}', False),
+    ('{"value": 1e1.5}', False),
+    ('{"value": 1e-1.5}', False),
+    ('{"value": 1e1a}', False),
+    ('{"value": 1e-1a}', False),
+    ('{"value": 0x123}', False),
+    ('{"value": 0b1010}', False),
+    ('{"value": 0o123}', False),
+    ('{"value": Infinity}', False),
+    ('{"value": -Infinity}', False),
+    ('{"value": NaN}', False),
+    ('{"value": 1,000}', False),
+    ('{"value": 1_000}', False),
+    ('{"value": 1.2.3}', False),
+    ('{"value": 1e2e3}', False),
+    ('{"value": 1e+2e-3}', False),
+    ('{"value": --1}', False),
+    ('{"value": ++1}', False),
+    ('{"value": +-1}', False),
+    ('{"value": 9007199254740992}', True),
+    ('{"value": -9007199254740992}', True),
+])
+def test_number_edge_cases(test_input, expected_success):
+    _test_json_schema_parsing_with_string(test_input, schema, expected_success)
+
+def test_chinese_oneof_schema():
+    test_schema = { "$schema": "http://json-schema.org/draft-07/schema#", "type": "array", "items": { "oneOf": [ { "type": "object", "properties": { "trigger": { "type": "string" }, "event_type": { "enum": [ "公司上市" ] }, "arguments": { "type": "array", "items": { "type": "object", "properties": { "role": { "enum": [ "上市公司", "证券代码", "环节", "披露时间", "发行价格", "事件时间", "市值", "募资金额" ] }, "argument": { "type": "string" } }, "required": [ "role", "argument" ] } } }, "required": [ "trigger", "event_type", "arguments" ] }, { "type": "object", "properties": { "trigger": { "type": "string" }, "event_type": { "enum": [ "被约谈" ] }, "arguments": { "type": "array", "items": { "type": "object", "properties": { "role": { "enum": [ "公司名称", "披露时间", "被约谈时间", "约谈机构" ] }, "argument": { "type": "string" } }, "required": [ "role", "argument" ] } } }, "required": [ "trigger", "event_type", "arguments" ] } ] } }
+    correct_output = """[{"trigger": "IPO", "event_type": "公司上市", "arguments": [{"role": "上市公司", "argument": "理想汽车"}, {"role": "披露时间", "argument": "30日"}, {"role": "发行价格", "argument": "8-10美元"}, {"role": "环节", "argument": "筹备上市"}]}]"""
+    _test_json_schema_parsing_with_string(correct_output, test_schema, True)
+
+def test_additional_properties():
+    schema = {'type': 'object', 'properties': {'snippets': {'title': 'snippets', 'type': 'string'}, 'overall_sentiment': {'title': 'overall_sentiment', 'type': 'string'}}, 'required': ['snippets', 'overall_sentiment'], 'additionalProperties': False, 'definitions': {}} 
+    completion = """{"snippets": "What a beautiful day", "overall_sentiment": "Positive"}"""
+    _test_json_schema_parsing_with_string(completion, schema, True)

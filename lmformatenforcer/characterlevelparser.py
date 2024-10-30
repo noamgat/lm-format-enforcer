@@ -4,7 +4,8 @@ from dataclasses import dataclass, field
 from typing import Hashable, List, Optional, TypeVar
 from .consts import (COMPLETE_ALPHABET, WHITESPACE_CHARACTERS, DEFAULT_MAX_CONSECUTIVE_WHITESPACES, 
                      DEFAULT_FORCE_JSON_FIELD_ORDER, CONFIG_ENV_VAR_MAX_CONSECUTIVE_WHITESPACES, 
-                     CONFIG_ENV_VAR_STRICT_JSON_FIELD_ORDER)
+                     CONFIG_ENV_VAR_STRICT_JSON_FIELD_ORDER, CONFIG_ENV_VAR_MAX_JSON_ARRAY_LENGTH,
+                     DEFAULT_MAX_JSON_ARRAY_LENGTH)
 
 
 def _parse_bool(s: str) -> bool:
@@ -29,6 +30,10 @@ class CharacterLevelParserConfig:
                                                          DEFAULT_FORCE_JSON_FIELD_ORDER)
     """Whether the JsonSchemaParser will force fields to appear in the 
     order of the 'required' field in the schema"""
+    max_json_array_length: int = _env_or_default_field(CONFIG_ENV_VAR_MAX_JSON_ARRAY_LENGTH,
+                                                       DEFAULT_MAX_JSON_ARRAY_LENGTH)
+    """What is the maximum json array length if not specified by the schema. Helps the LLM
+    avoid infinite loops."""
 
 
 class CharacterLevelParser(abc.ABC):
@@ -122,8 +127,11 @@ class UnionParser(CharacterLevelParser):
     def can_end(self) -> bool:
         return any([parser.can_end() for parser in self.parsers])
     
-    def shortcut_key(self) -> Optional[str]:
-        return self.parsers[0].shortcut_key() if len(self.parsers) == 1 else None
+    def shortcut_key(self) -> Optional[Hashable]:
+        unique_shortcut_keys = set(parser.shortcut_key() for parser in self.parsers)
+        if len(unique_shortcut_keys) == 1:
+            return next(iter(unique_shortcut_keys))
+        return None
     
     def cache_key(self) -> Optional[Hashable]:
         all_cache_keys = tuple(parser.cache_key() for parser in self.parsers)
@@ -146,7 +154,10 @@ class SequenceParser(CharacterLevelParser):
             if new_character in parser.get_allowed_characters():
                 updated_parser = parser.add_character(new_character)
                 next_parsers = [updated_parser] + self.parsers[idx+1:]
-                legal_parsers.append(SequenceParser(next_parsers))
+                if len(next_parsers) == 1:
+                    legal_parsers.append(next_parsers[0])
+                else:
+                    legal_parsers.append(SequenceParser(next_parsers))
             if not parser.can_end():
                 break
         if len(legal_parsers) == 1:

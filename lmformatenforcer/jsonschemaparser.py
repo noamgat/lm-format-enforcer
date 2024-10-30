@@ -160,7 +160,8 @@ class BaseParsingState(CharacterLevelParser):
 
 
 def _merge_object_schemas(base_schema: JsonSchemaObject, option_schema: JsonSchemaObject) -> JsonSchemaObject:
-    for property_name, property_value in base_schema.properties.items():
+    base_schema_properties = base_schema.properties or {}
+    for property_name, property_value in base_schema_properties.items():
         # We assume that if a property exists in both base and option, the option version will be
         # more specific, therefore we only take missing entries
         if property_name not in option_schema.properties:
@@ -201,13 +202,13 @@ def get_parser(
             max_length=value_schema.maxLength,
             pattern=value_schema.pattern,
         )
+    if value_schema.oneOf:
+        # We create a combined object schema for each option that includes the information from the parent
+        # And then create a UnionParser based on the combined options
+        merged_schemas = [_merge_object_schemas(value_schema, option_schema) for option_schema in value_schema.oneOf]
+        object_parsing_options = [ObjectParsingState(merged_schema, parsing_state) for merged_schema in merged_schemas]
+        return UnionParser(object_parsing_options)
     elif value_schema.type == "object":
-        if value_schema.oneOf:
-            # We create a combined object schema for each option that includes the information from the parent
-            # And then create a UnionParser based on the combined options
-            merged_schemas = [_merge_object_schemas(value_schema, option_schema) for option_schema in value_schema.oneOf]
-            object_parsing_options = [ObjectParsingState(merged_schema, parsing_state) for merged_schema in merged_schemas]
-            return UnionParser(object_parsing_options)
         return ObjectParsingState(value_schema, parsing_state)
     elif value_schema.type == None and value_schema.ref:
         value_class_name = value_schema.ref.split('/')[-1]
@@ -438,12 +439,16 @@ class NumberParsingState(PrimitiveParsingState):
         self.allow_floating_point = allow_floating_point
         self.seen_decimal_point = False
         self.seen_whitespace_after_digits = False
+        self.seen_exponent = False
+        self.seen_digit = False
 
     def _clone(self) -> "NumberParsingState":
         clone = NumberParsingState(self.root, self.allow_floating_point)
         clone.parsed_string = self.parsed_string
         clone.seen_decimal_point = self.seen_decimal_point
         clone.seen_whitespace_after_digits = self.seen_whitespace_after_digits
+        clone.seen_exponent = self.seen_exponent
+        clone.seen_digit = self.seen_digit
         return clone
     
     def add_character(self, new_character: str) -> CharacterLevelParser:
@@ -455,7 +460,17 @@ class NumberParsingState(PrimitiveParsingState):
                 self.seen_whitespace_after_digits = True
             return self
         if new_character == ".":
+            if not self.parsed_string or len(self.parsed_string) == 1:
+                raise LMFormatEnforcerException("Numbers cannot start with a decimal point.")
+            if self.seen_decimal_point:
+                raise LMFormatEnforcerException("Numbers cannot contain more than two decimal points.")
             self.seen_decimal_point = True
+        elif new_character in "eE":
+            if self.seen_exponent or not self.seen_digit:
+                raise LMFormatEnforcerException("Invalid number format")
+            self.seen_exponent = True
+        elif new_character.isdigit():
+            self.seen_digit = True
         return self
 
     def get_allowed_characters(self) -> str:
@@ -464,13 +479,23 @@ class NumberParsingState(PrimitiveParsingState):
         allowed_characters = "0123456789"
         if not self.parsed_string:
             allowed_characters += "-" + WHITESPACE_CHARACTERS
-        if self.allow_floating_point and not self.seen_decimal_point:
+        if self.parsed_string and len(self.parsed_string) == 1 and self.parsed_string[0] == "0":
+            allowed_characters = WHITESPACE_CHARACTERS
+        if self.parsed_string and len(self.parsed_string) == 2 and self.parsed_string == "-0":
+            allowed_characters = "." + WHITESPACE_CHARACTERS
+        if self.parsed_string and self.parsed_string[-1] in "eE":
+            allowed_characters += "-+"
+        if self.seen_digit and not self.seen_exponent:
+            allowed_characters += "eE"
+        if self.allow_floating_point and not self.seen_decimal_point and self.seen_digit and not self.seen_exponent:
             allowed_characters += "."
         if self.parsed_string and self.parsed_string[-1].isdigit():
             allowed_characters += WHITESPACE_CHARACTERS
         return allowed_characters
 
     def can_end(self) -> bool:
+        if self.seen_exponent and self.parsed_string[-1] in "eE+-":
+            return False
         return bool(self.parsed_string) and (self.parsed_string[-1].isdigit() or self.seen_whitespace_after_digits)
 
 
@@ -611,6 +636,9 @@ class ListParsingState(PrimitiveParsingState):
         self.list_member_type = list_member_type
         self.min_items = min_items
         self.max_items = max_items
+        default_max = root.config.max_json_array_length
+        if self.max_items is None and default_max > 0 and (min_items is None or min_items < default_max):
+            self.max_items = default_max
 
     def _clone(self) -> PrimitiveParsingState:
         new = ListParsingState(self.root, self.list_member_type, self.min_items, self.max_items)

@@ -1,5 +1,5 @@
 try:
-    from haystack.preview import component
+    from haystack import component
     from canals import Component
 except ImportError:
     raise ImportError('haystack is not installed. Please install it with "pip install farm-haystack" or "pip install haystack-ai')

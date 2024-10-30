@@ -1,5 +1,30 @@
 # LM Format Enforcer Changelog
 
+## v0.10.9
+- Added new sample: [Extracting structured data from vision models](https://github.com/noamgat/lm-format-enforcer/blob/main/samples/colab_llama32_vision_enforcer.ipynb)
+
+## v0.10.8
+- Fixed support for tokenizers with larger vocabularies than the models. Enables visual models such as Llama3.2
+- JsonSchemaParser: Fixed additionalProperies and oneOf edge cases
+
+## v0.10.7
+- [135] Updated Haystack V2 integration with latest API
+
+## v0.10.6
+- Pickling improvements for easier multiprocessing support
+
+## v0.10.5
+- SequenceParser performance optimization
+- JsonSchemaParser: number parsing supports exponents
+- Supporting tokenizers with multiple eos token ids
+
+## v0.10.4
+- Added default max Json array length to help LLMs avoid infinite loops. See README for details.
+- Updated EXLlamaV2 example to updated API
+
+## v0.10.3
+- [#113] TRTLLM Support: Fixing type incompatibility in certain cases / library versions
+
 ## v0.10.2
 - [#100] JsonSchemaParser: Added allOf support
 - [#99] JsonSchemaParser: Fixed edge case that would allow leading comma in JSON Array 

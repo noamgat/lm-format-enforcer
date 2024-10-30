@@ -15,7 +15,8 @@ class TRTLLMLogitsProcessor:
         self.eos_token_id = eos_token_id
 
     def _trim(self, input):
-        return [x for x in input.tolist() if x != self.eos_token_id]
+        return [x for x in input.tolist() if x not in \
+                (self.eos_token_id if isinstance(self.eos_token_id, list) else [self.eos_token_id])]
 
     def __call__(self, step: int, batch_input_ids: List[List[int]], logits: torch.Tensor) -> torch.Tensor:
         for idx in range(len(batch_input_ids)):
@@ -36,11 +37,16 @@ class TRTLLMLogitsProcessor:
 
 
 def _build_regular_tokens_list(tokenizer) -> List[Tuple[int, str, bool]]:
+    # There are many classes that can be passed here, this logic should work on all of them.
+    if hasattr(tokenizer, 'get_tokenizer'):
+        tokenizer = tokenizer.get_tokenizer()
+    if hasattr(tokenizer, 'tokenizer'):
+        tokenizer = tokenizer.tokenizer
     token_0 = [tokenizer.encode("0")[-1]]
     regular_tokens = []
-    vocab_size = tokenizer.tokenizer.vocab_size
+    vocab_size = tokenizer.vocab_size
     for token_idx in range(vocab_size):
-        if token_idx in tokenizer.tokenizer.all_special_ids:
+        if token_idx in tokenizer.all_special_ids:
             continue
         # We prepend token 0 and skip the first letter of the result to get a space if the token is a start word.
         tensor_after_0 = torch.tensor(token_0 + [token_idx], dtype=torch.long)
