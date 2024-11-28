@@ -35,6 +35,11 @@ class CharacterLevelParserConfig:
     """What is the maximum json array length if not specified by the schema. Helps the LLM
     avoid infinite loops."""
 
+    superfast_mode: bool = False
+    """
+    Whether to skip calculations on acceptable tokens when starting a new string, in favour of always outputting a speech mark.
+    """
+
 
 class CharacterLevelParser(abc.ABC):
     """CharacterLevelParser is an interface for classes that can parse strings one character at a time, and determine which characters are allowed at any specific time"""
