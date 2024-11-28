@@ -131,7 +131,8 @@ class JsonSchemaParser(CharacterLevelParser):
             # continuation tokens than there are beams. Therefore, we allow whitespace 
             # characters when the object stack is empty (= we are done parsing)
             allowed_characters = WHITESPACE_CHARACTERS
-        
+
+        print("MAXCONSWS: ", self.config)
         if self.num_consecutive_whitespaces >= self.config.max_consecutive_whitespaces:
             # print("Filtering whitespace characters")
             allowed_characters = "".join(c for c in allowed_characters if c not in WHITESPACE_CHARACTERS)
