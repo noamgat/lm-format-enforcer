@@ -1,3 +1,4 @@
+import os
 from copy import deepcopy
 import enum
 import sys
@@ -45,7 +46,9 @@ class JsonSchemaParser(CharacterLevelParser):
             self.context.model_class = JsonSchemaObject(**json_schema)
             self.context.active_parser = self
             self.context.alphabet_without_quotes = self.config.alphabet.replace('"', '')
-        
+
+
+
         self.num_consecutive_whitespaces = num_consecutive_whitespaces
         if existing_stack is None:
             self.object_stack = [get_parser(self, self.context.model_class)]
@@ -152,6 +155,24 @@ class JsonSchemaParser(CharacterLevelParser):
                     if cur_len < max_len:
                         return ('json_freetext', cur_len, min_len, max_len)
         return None
+
+    def cache_key(self) -> Optional[Hashable]:
+        if self.object_stack:
+            current_parser = self.object_stack[-1]
+            if isinstance(current_parser, StringParsingState):
+                if not current_parser.allowed_strings and not current_parser.seen_opening_quote and not current_parser.regex_parser:
+
+                    if os.getenv("SUPERFAST_MODE", "0") in ["1", "true", "True"]:
+                        return "superfast"
+
+                    cur_len = len(current_parser.parsed_string)
+                    assert cur_len == 0
+                    min_len = current_parser.min_length or 0
+                    max_len = current_parser.max_length or sys.maxsize
+                    qx = self.add_character('"').add_character('"').get_allowed_characters()
+
+                    return ("open_value", min_len, max_len, self.num_consecutive_whitespaces, qx)
+
 
 
 class BaseParsingState(CharacterLevelParser):

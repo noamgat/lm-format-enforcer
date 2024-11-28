@@ -1,3 +1,4 @@
+import os
 from dataclasses import dataclass, field
 import sys
 from typing import Callable, Dict, Hashable, List, Optional, Tuple, Union
@@ -51,7 +52,12 @@ class TokenEnforcer:
         self.eos_token_id = tokenizer_data.eos_token_id
         self.regular_tokens = tokenizer_data.regular_tokens
         self.allowed_token_cache: Dict[Hashable, List[int]] = {}
-        
+
+        if os.getenv("SUPERFAST_MODE", "0") in ["1", "true", "True"]:
+            for token_idx, decoded, _ in self.regular_tokens:
+                if decoded == '"':
+                    self.allowed_token_cache["superfast"] = [token_idx]
+
         config = CharacterLevelParserConfig(alphabet=tokenizer_data.tokenizer_alphabet)
         parser.config = config
 
@@ -84,6 +90,8 @@ class TokenEnforcer:
             self.prefix_states[sent_tuple] = new_state
             self._compute_allowed_tokens(sent_tuple, new_state)
             return new_state.allowed_tokens
+
+
 
     def _compute_allowed_tokens(self, state_tokens: Tuple, state: 'TokenEnforcer.OutputTensorState'):
         try:
@@ -123,7 +131,7 @@ class TokenEnforcer:
         relevant_characters = tree_node.children.keys()
         # This next line is the heart of the traversal algorithm. We only explore paths that are shared by both the parser and the tokenizer.
         characters_to_explore = set(relevant_characters).intersection(allowed_characters)
-        
+
         # Performance optimization: If we are in JSON freetext, all of the tokens that don't contain quote, or end with quote, are legal, so we take
         # their cached list. If the quote character is allowed, we only need to dynamically explore the cases where the string starts with a quote.
         # This breaks the elegance of the API, but otherwise it is a huge performance hit.
@@ -137,7 +145,6 @@ class TokenEnforcer:
 
             allowed_tokens.extend(cache.lookup_allowed_tokens(min_remaining, max_allowed_len))
             characters_to_explore = characters_to_explore.intersection(['"'])
-
         for character in characters_to_explore:
             next_parser = parser.add_character(character)
             next_tree_node = tree_node.children[character]
@@ -154,6 +161,12 @@ class TokenEnforcer:
             prev_decoded = self.decoder(state.current_word_tokens)
             new_decoded = self.decoder(new_state.current_word_tokens)
             new_characters = new_decoded[len(prev_decoded):]
+
+            if len(new_characters) == 1 and self.tokenizer_tree.tokens_to_strs.get(token_sequence[-2]) == '�' and self.tokenizer_tree.tokens_to_strs[new_token] == '�':
+                print("TRIGGERED")
+                decoded_unicode_char = self.decoder(token_sequence[-2:])
+                new_characters = 'X'*len(decoded_unicode_char)
+
         for character in new_characters:
             try:
                 new_state.parser = new_state.parser.add_character(character)
