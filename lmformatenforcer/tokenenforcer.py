@@ -162,7 +162,6 @@ class TokenEnforcer:
             new_characters = new_decoded[len(prev_decoded):]
 
             if len(new_characters) == 1 and self.tokenizer_tree.tokens_to_strs.get(token_sequence[-2]) == '�' and self.tokenizer_tree.tokens_to_strs[new_token] == '�':
-                print("TRIGGERED")
                 decoded_unicode_char = self.decoder(token_sequence[-2:])
                 new_characters = 'X'*len(decoded_unicode_char)
 
