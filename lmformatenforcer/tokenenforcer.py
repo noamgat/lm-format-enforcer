@@ -58,8 +58,7 @@ class TokenEnforcer:
                 if decoded == '"':
                     self.allowed_token_cache["superfast"] = [token_idx]
 
-        config = CharacterLevelParserConfig(alphabet=tokenizer_data.tokenizer_alphabet)
-        parser.config = config
+        parser.config.alphabet = tokenizer_data.tokenizer_alphabet
 
     def get_allowed_tokens(self, token_sequence: List[int]) -> List[int]:
         """
