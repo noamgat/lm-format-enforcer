@@ -122,6 +122,11 @@ class TokenizerPrefixTree:
         self.json_freetext_tokens = JsonFreetextTokenCache()
         self.new_word_tokens: Set[int] = set()
         self.tokens_to_strs = {token_idx: token_str for token_idx, token_str, _ in regular_tokens}
+        
+        # Initialize regex pattern cache
+        self.regex_pattern_caches: Dict[str, RegexPatternCache] = {}
+        
+        # Process tokens
         for token_idx, decoded, is_new_word in regular_tokens:
             self._add_token_to_tree(decoded, token_idx, self.root)
             self.json_freetext_tokens.add_token(decoded, token_idx)
@@ -129,7 +134,6 @@ class TokenizerPrefixTree:
                 self.new_word_tokens.add(token_idx)
 
         self.json_freetext_tokens.freeze()
-        self.regex_pattern_caches: Dict[str, RegexPatternCache] = {}
 
     def _add_token_to_tree(self, token_str: str, token_idx: int, node: TokenizerPrefixTreeNode):
         for character in token_str:
@@ -139,11 +143,17 @@ class TokenizerPrefixTree:
         node.tokens.append(token_idx)
 
     def get_regex_pattern_cache(self, pattern_hash: str) -> Optional[RegexPatternCache]:
-        return self.regex_pattern_caches.get(pattern_hash)
+        """Get cached allowed tokens for a regex pattern if available"""
+        return self.regex_pattern_caches.get(str(pattern_hash))  # Convert hash to string for consistent lookup
 
-    def cache_regex_pattern(self, pattern: str, allowed_tokens: List[int]):
-        pattern_hash = hash(pattern)
+    def cache_regex_pattern(self, pattern_str: str, allowed_tokens: List[int]):
+        """Cache allowed tokens for a regex pattern"""
+        pattern_hash = str(hash(pattern_str))  # Convert hash to string for consistent storage
         self.regex_pattern_caches[pattern_hash] = RegexPatternCache(
             pattern_hash=pattern_hash,
             allowed_tokens=allowed_tokens
         )
+
+    def clear_regex_pattern_cache(self):
+        """Clear the regex pattern cache if needed"""
+        self.regex_pattern_caches.clear()
