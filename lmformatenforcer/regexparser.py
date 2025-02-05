@@ -39,10 +39,32 @@ class RegexParser(CharacterLevelParser):
         self.current_state = self.context.pattern.initial if current_state == RegexParser.UNINITIALIZED_STATE else current_state
 
     def add_character(self, new_character: str) -> 'RegexParser':
-        new_parser = super().add_character(new_character)
-        if isinstance(new_parser, RegexParser):
+        if self.current_state == RegexParser.INVALID_STATE:
+            return self
+        
+        state = self.current_state
+        fsm = self.context.pattern
+        # Mostly taken from FSM.accept()
+        symbol = new_character
+        if anything_else in fsm.alphabet and not symbol in fsm.alphabet:
+            symbol = anything_else
+        transition = fsm.alphabet[symbol]
+
+        try:
+            # Prefer try-catch to checking if transition exists to avoid double lookup perf hit in valid case
+            state = fsm.map[state][transition]  # type: ignore
+            new_parser = RegexParser(self.context, self.config, state)
+            new_parser.pattern = self.pattern
+            new_parser.pattern_hash = self.pattern_hash
             new_parser.parsed_string = self.parsed_string + new_character
-        return new_parser
+            return new_parser
+        except KeyError:
+            # Missing transition = transition to dead state
+            new_parser = RegexParser(self.context, self.config, RegexParser.INVALID_STATE)
+            new_parser.pattern = self.pattern
+            new_parser.pattern_hash = self.pattern_hash
+            new_parser.parsed_string = self.parsed_string
+            return new_parser
     
     def can_end(self) -> bool:
         return self.current_state in self.context.pattern.finals or self.current_state == RegexParser.INVALID_STATE
