@@ -131,6 +131,12 @@ class TokenEnforcer:
                 allowed_tokens.extend(cache.allowed_tokens)
                 # Only explore quote character if needed
                 characters_to_explore = characters_to_explore.intersection(['"'])
+            else:
+                # If not cached yet, collect tokens and cache them
+                pattern_tokens = []
+                self._collect_allowed_tokens(parser, tree_node, pattern_tokens, None)
+                self.tokenizer_tree.cache_regex_pattern(pattern_hash, pattern_tokens)
+                allowed_tokens.extend(pattern_tokens)
         
         # Existing json_freetext shortcut
         elif isinstance(shortcut_key, tuple) and shortcut_key[0] == 'json_freetext':
@@ -138,8 +144,8 @@ class TokenEnforcer:
             _, cur_len, min_len, max_len = shortcut_key
             cache = self.tokenizer_tree.json_freetext_tokens
 
-            min_remaining = min(cache.max_token_len, max(0, min_len - cur_len))  # no " allowed before this many chars
-            max_allowed_len = min(cache.max_token_len, max_len - cur_len)  # max new characters allowed (before ")
+            min_remaining = min(cache.max_token_len, max(0, min_len - cur_len))
+            max_allowed_len = min(cache.max_token_len, max_len - cur_len)
 
             allowed_tokens.extend(cache.lookup_allowed_tokens(min_remaining, max_allowed_len))
             characters_to_explore = characters_to_explore.intersection(['"'])

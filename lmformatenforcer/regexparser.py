@@ -17,6 +17,9 @@ class RegexParser(CharacterLevelParser):
     
     context: _Context
     current_state: int
+    pattern: Union[str, None]
+    pattern_hash: Union[int, None]
+    parsed_string: str
 
     def __init__(self, pattern: Union[str, _Context], config: Optional[CharacterLevelParserConfig] = None, current_state: int = UNINITIALIZED_STATE):
         super().__init__(config)
@@ -30,27 +33,16 @@ class RegexParser(CharacterLevelParser):
             self.parsed_string = ""
         else:
             self.context = pattern
-        self.current_state: int = self.context.pattern.initial if current_state == RegexParser.UNINITIALIZED_STATE else current_state
+            self.pattern = pattern.pattern if hasattr(pattern, 'pattern') else None
+            self.pattern_hash = hash(self.pattern) if self.pattern else None
+            self.parsed_string = ""
+        self.current_state = self.context.pattern.initial if current_state == RegexParser.UNINITIALIZED_STATE else current_state
 
     def add_character(self, new_character: str) -> 'RegexParser':
-        if self.current_state == RegexParser.INVALID_STATE:
-            return self
-        
-        state = self.current_state
-        fsm = self.context.pattern
-        # Mostly taken from FSM.accept()
-        symbol = new_character
-        if anything_else in fsm.alphabet and not symbol in fsm.alphabet:
-            symbol = anything_else
-        transition = fsm.alphabet[symbol]
-
-        try:
-            # Prefer try-catch to checking if transition exists to avoid double lookup perf hit in valid case
-            state = fsm.map[state][transition]  # type: ignore
-            return RegexParser(self.context, self.config, state)
-        except KeyError:
-            # Missing transition = transition to dead state
-            return RegexParser(self.context, self.config, RegexParser.INVALID_STATE)
+        new_parser = super().add_character(new_character)
+        if isinstance(new_parser, RegexParser):
+            new_parser.parsed_string = self.parsed_string + new_character
+        return new_parser
     
     def can_end(self) -> bool:
         return self.current_state in self.context.pattern.finals or self.current_state == RegexParser.INVALID_STATE
@@ -86,7 +78,8 @@ class RegexParser(CharacterLevelParser):
         self._update_alphabet(new_config.alphabet)
 
     def shortcut_key(self) -> Optional[Hashable]:
-        # Return a shortcut key for regex patterns
+        if self.pattern is None:
+            return None
         return ('regex_pattern', self.pattern_hash, len(self.parsed_string))
 
 

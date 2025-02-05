@@ -22,7 +22,7 @@ class JsonSchemaParser(CharacterLevelParser):
         active_parser: "JsonSchemaParser"
         alphabet_without_quotes: str
         regex_parser_cache: Dict[str, RegexParser] = {}
-        regex_pattern_cache: Dict[str, RegexParser] = {}
+        regex_pattern_cache: Dict[str, List[int]] = {}  # Changed from RegexParser to List[int]
 
     object_stack: List[CharacterLevelParser]
     context: _Context
@@ -154,6 +154,13 @@ class JsonSchemaParser(CharacterLevelParser):
                     if cur_len < max_len:
                         return ('json_freetext', cur_len, min_len, max_len)
         return None
+
+    def get_or_create_regex_parser(self, pattern: str) -> RegexParser:
+        """Helper method to get or create a regex parser with caching"""
+        if pattern not in self.context.regex_parser_cache:
+            parser = RegexParser(pattern, self.config)
+            self.context.regex_parser_cache[pattern] = parser
+        return self.context.regex_parser_cache[pattern]
 
 
 class BaseParsingState(CharacterLevelParser):
