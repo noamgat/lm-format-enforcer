@@ -25,6 +25,9 @@ class RegexParser(CharacterLevelParser):
             self.context.pattern = interegular.parse_pattern(pattern).to_fsm()
             self.context.state_character_cache = {}
             self._update_alphabet(self.config.alphabet)
+            self.pattern = pattern
+            self.pattern_hash = hash(pattern)
+            self.parsed_string = ""
         else:
             self.context = pattern
         self.current_state: int = self.context.pattern.initial if current_state == RegexParser.UNINITIALIZED_STATE else current_state
@@ -81,5 +84,9 @@ class RegexParser(CharacterLevelParser):
     def config(self, new_config: CharacterLevelParserConfig):
         CharacterLevelParser.config.fset(self, new_config)  # Original set
         self._update_alphabet(new_config.alphabet)
+
+    def shortcut_key(self) -> Optional[Hashable]:
+        # Return a shortcut key for regex patterns
+        return ('regex_pattern', self.pattern_hash, len(self.parsed_string))
 
 

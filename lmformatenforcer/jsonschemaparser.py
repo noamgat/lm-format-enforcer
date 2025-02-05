@@ -22,6 +22,7 @@ class JsonSchemaParser(CharacterLevelParser):
         active_parser: "JsonSchemaParser"
         alphabet_without_quotes: str
         regex_parser_cache: Dict[str, RegexParser] = {}
+        regex_pattern_cache: Dict[str, RegexParser] = {}
 
     object_stack: List[CharacterLevelParser]
     context: _Context
@@ -45,6 +46,7 @@ class JsonSchemaParser(CharacterLevelParser):
             self.context.model_class = JsonSchemaObject(**json_schema)
             self.context.active_parser = self
             self.context.alphabet_without_quotes = self.config.alphabet.replace('"', '')
+            self.context.regex_pattern_cache = {}
         
         self.num_consecutive_whitespaces = num_consecutive_whitespaces
         if existing_stack is None:
