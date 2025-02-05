@@ -14,6 +14,7 @@ class RegexParser(CharacterLevelParser):
         pattern: interegular.FSM
         anything_else_characters: str
         state_character_cache: Dict[int, str]
+        state_token_cache: Dict[int, List[int]] = {}  # Cache allowed tokens per FSM state
     
     context: _Context
     current_state: int
@@ -70,6 +71,9 @@ class RegexParser(CharacterLevelParser):
         return self.current_state in self.context.pattern.finals or self.current_state == RegexParser.INVALID_STATE
     
     def get_allowed_characters(self) -> str:
+        # Only compute allowed characters if we don't have a token cache for this state
+        if self.current_state in self.context.state_token_cache:
+            return ''  # Skip character exploration if we have cached tokens
         if self.current_state not in self.context.pattern.map:
             return ''
         if self.current_state not in self.context.state_character_cache:
@@ -87,7 +91,9 @@ class RegexParser(CharacterLevelParser):
     
     def cache_key(self) -> Optional[Hashable]:
         # If we are in the same regex fsm state, the allowed next tokens are the same ones
-        return self.current_state
+        if self.current_state == RegexParser.INVALID_STATE:
+            return None
+        return ('regex_state', self.pattern_hash, self.current_state)
 
     def _update_alphabet(self, new_alphabet: str):
         if self.context:

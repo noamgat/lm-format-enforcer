@@ -6,6 +6,7 @@ import logging
 from .exceptions import LMFormatEnforcerException
 from .characterlevelparser import CharacterLevelParser, ForceStopParser, CharacterLevelParserConfig
 from .tokenizerprefixtree import TokenizerPrefixTree, TokenizerPrefixTreeNode
+from .regexparser import RegexParser
 
 
 class TokenEnforcerTokenizerData:
@@ -119,37 +120,47 @@ class TokenEnforcer:
 
     def _collect_allowed_tokens(self, parser: CharacterLevelParser, tree_node: TokenizerPrefixTreeNode, allowed_tokens: List[int], shortcut_key: Optional[Hashable]):
         allowed_tokens.extend(tree_node.tokens)
-        allowed_characters = parser.get_allowed_characters()
-        relevant_characters = tree_node.children.keys()
-        characters_to_explore = set(relevant_characters).intersection(allowed_characters)
         
-        # Add regex pattern shortcut similar to json_freetext
-        if isinstance(shortcut_key, tuple) and shortcut_key[0] == 'regex_pattern':
-            _, pattern_hash, cur_len = shortcut_key
-            cache = self.tokenizer_tree.get_regex_pattern_cache(pattern_hash)
-            if cache:
-                allowed_tokens.extend(cache.allowed_tokens)
-                # Only explore quote character if needed
-                characters_to_explore = characters_to_explore.intersection(['"'])
-            else:
+        if isinstance(shortcut_key, tuple):
+            if shortcut_key[0] == 'regex_state':
+                _, pattern_hash, state = shortcut_key
+                # Check state-level cache first
+                if isinstance(parser, RegexParser):
+                    if state in parser.context.state_token_cache:
+                        allowed_tokens.extend(parser.context.state_token_cache[state])
+                        return
+                    # If not in state cache, collect tokens and cache them
+                    state_tokens = []
+                    allowed_characters = parser.get_allowed_characters()
+                    relevant_characters = tree_node.children.keys()
+                    characters_to_explore = set(relevant_characters).intersection(allowed_characters)
+                    
+                    for character in characters_to_explore:
+                        next_parser = parser.add_character(character)
+                        next_tree_node = tree_node.children[character]
+                        self._collect_allowed_tokens(next_parser, next_tree_node, state_tokens, None)
+                    
+                    parser.context.state_token_cache[state] = state_tokens
+                    allowed_tokens.extend(state_tokens)
+                    return
+            elif shortcut_key[0] == 'regex_pattern':
+                # Existing regex pattern cache logic
+                _, pattern_hash, cur_len = shortcut_key
+                cache = self.tokenizer_tree.get_regex_pattern_cache(pattern_hash)
+                if cache:
+                    allowed_tokens.extend(cache.allowed_tokens)
+                    return
                 # If not cached yet, collect tokens and cache them
                 pattern_tokens = []
                 self._collect_allowed_tokens(parser, tree_node, pattern_tokens, None)
                 self.tokenizer_tree.cache_regex_pattern(pattern_hash, pattern_tokens)
                 allowed_tokens.extend(pattern_tokens)
+
+        # Regular token collection logic
+        allowed_characters = parser.get_allowed_characters()
+        relevant_characters = tree_node.children.keys()
+        characters_to_explore = set(relevant_characters).intersection(allowed_characters)
         
-        # Existing json_freetext shortcut
-        elif isinstance(shortcut_key, tuple) and shortcut_key[0] == 'json_freetext':
-            assert len(shortcut_key) == 4
-            _, cur_len, min_len, max_len = shortcut_key
-            cache = self.tokenizer_tree.json_freetext_tokens
-
-            min_remaining = min(cache.max_token_len, max(0, min_len - cur_len))
-            max_allowed_len = min(cache.max_token_len, max_len - cur_len)
-
-            allowed_tokens.extend(cache.lookup_allowed_tokens(min_remaining, max_allowed_len))
-            characters_to_explore = characters_to_explore.intersection(['"'])
-
         for character in characters_to_explore:
             next_parser = parser.add_character(character)
             next_tree_node = tree_node.children[character]
