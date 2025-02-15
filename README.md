@@ -199,6 +199,7 @@ There are several environment variables that can be set, that affect the operati
 - `LMFE_MAX_CONSECUTIVE_WHITESPACES` - How many consecutive whitespaces are allowed when parsing JsonSchemaObjects. Default: 12.
 - `LMFE_STRICT_JSON_FIELD_ORDER` - Should the JsonSchemaParser force the properties to appear in the same order as they appear in the 'required' list of the JsonSchema? (Note: this is consistent with the order of declaration in Pydantic models). Default: False.
 - `LMFE_MAX_JSON_ARRAY_LENGTH` - What is the maximal JSON array length, if not specified by the schema. Helps LLM Avoid infinite loops. Default: 20.
+- `LMFE_DEFAULT_ALPHABET` - What alphabet is used by default for allowed characters? See [consts.py](https://github.com/noamgat/lm-format-enforcer/blob/main/lmformatenforcer/consts.py#L1) for default. Can be overriden and extended to include language specific characters. It is required if you want these characters to appear as json keys or enum values in JsonSchemaParser.
 
 ### Option 2: via the CharacterLevelParserConfig class
 When using the library through code, any `CharacterLevelParser` (`JsonSchemaParser`, `RegexParser` etc) constructor receives an optional `CharacterLevelParserConfig` object. 
