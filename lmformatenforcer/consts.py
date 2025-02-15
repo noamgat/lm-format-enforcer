@@ -18,3 +18,8 @@ fields to appear in the order of the 'required' field in the schema. Default: fa
 CONFIG_ENV_VAR_MAX_JSON_ARRAY_LENGTH = 'LMFE_MAX_JSON_ARRAY_LENGTH'
 """Environment variable for externally controlling what is the maximal JSON array length,
 if not specified by the schema. Default: 20"""
+
+CONFIG_ENV_VAR_DEFAULT_ALPHABET = "LMFE_DEFAULT_ALPHABET"
+"""Environment variable for overriding the default alphabet used for 'any character'.
+If you override, it should probably be a superset of consts.COMPLETE_ALPHABET.
+Default: consts.COMPLETE_ALPHABET."""
