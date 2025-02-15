@@ -310,6 +310,34 @@ def test_allof():
         _test_json_schema_parsing_with_string(test_string, allof_schema, False)
 
 
+def test_type_string_list():
+    # A list of string can be used to describe multiple types
+    # https://json-schema.org/understanding-json-schema/reference/type
+    type_string_list_schema = {
+        "type": ["number", "string"]
+    }
+
+    # Valid cases
+    valid_test_strings = [
+        '42',
+        '42.0',
+        '"42.0"',
+        '"life is good"',
+    ]
+
+    # Invalid cases
+    invalid_test_strings = [
+        '{"num": 123}',  # object
+        '["not", "good"]',  # list of string
+        '["42", 43]',  # list of mix types
+    ]
+
+    for test_string in valid_test_strings:
+        _test_json_schema_parsing_with_string(test_string, type_string_list_schema, True)
+
+    for test_string in invalid_test_strings:
+        _test_json_schema_parsing_with_string(test_string, type_string_list_schema, False)
+
 def test_leading_comma():
     array_of_objects_schema = {
         "type": "array",

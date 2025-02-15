@@ -262,6 +262,9 @@ def get_parser(
     elif value_schema.type == "array":
         item_schema = value_schema.items or JsonSchemaParser.ANY_JSON_OBJECT_SCHEMA
         return ListParsingState(parsing_state, item_schema, value_schema.minItems, value_schema.maxItems)
+    elif isinstance(value_schema.type, list):
+        parsers = [get_parser(parsing_state, JsonSchemaObject(type=schema)) for schema in value_schema.type]
+        return UnionParser(parsers)
     else:
         raise Exception("Unsupported type " + str(value_schema.type))
 
