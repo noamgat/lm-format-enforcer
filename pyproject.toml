@@ -57,19 +57,13 @@ types-setuptools = "68.1.0.1"
 pytest = {version = "6.2.5", python = ">=3.8"}
 coverage = {version = "^7.3.1", python = ">=3.8", extras = ["toml"]}
 transformers = ">=4.37.0"
-torch = {version = "^2.1.0+cpu", source = "pytorch"}
+torch = "^2.1.0"
 numpy = "^1.21.0"
 
 [tool.poetry.group.samples.dependencies]
 Flask = {version = "2.3.2", python = ">=3.8"}
 transformers = ">=4.37.0"
 tokenizers = ">=0.13.3"
-
-
-[[tool.poetry.source]]
-name = "pytorch"
-url = "https://download.pytorch.org/whl/cpu"
-priority = "explicit"
 
 [build-system]
 requires = ["poetry-core>=1.1.0"]
