@@ -19,7 +19,7 @@ jobs:
       # reference the matrixe python version here.
       - uses: actions/setup-python@v2
         with:
-          python-version: 3.8
+          python-version: 3.10
 
       # Cache the installation of Poetry itself, e.g. the next step. This prevents the workflow
       # from installing Poetry every time, which can be slow. Note the use of the Poetry version
