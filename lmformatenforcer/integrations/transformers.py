@@ -2,7 +2,7 @@ import functools
 from typing import Any, Callable, List, Optional, Tuple, Union
 try:
     from transformers import AutoModelForCausalLM
-    from transformers.generation.logits_process import LogitsWarper, PrefixConstrainedLogitsProcessor
+    from transformers.generation.logits_process import LogitsProcessor, PrefixConstrainedLogitsProcessor
     from transformers.tokenization_utils import PreTrainedTokenizerBase
 except ImportError:
     raise ImportError('transformers is not installed. Please install it with "pip install transformers[torch]"')
@@ -16,7 +16,7 @@ from ..characterlevelparser import CharacterLevelParser
 from ..tokenenforcer import TokenEnforcer, TokenEnforcerTokenizerData
 from ..analyzer import FormatEnforcerAnalyzer
 
-class LogitsSaverWarper(LogitsWarper):
+class LogitsSaverWarper(LogitsProcessor):
     def __init__(self, analyzer: FormatEnforcerAnalyzer) -> None:
         self.analyzer = analyzer
         
