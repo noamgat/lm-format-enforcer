@@ -1,5 +1,8 @@
 # LM Format Enforcer Changelog
 
+## v0.10.11
+- Fixed support for newer versions of transformer library
+
 ## v0.10.10
 - Added support of multiple types for a field in json schema (Contributed by [Guillaume Calmettes](https://github.com/gcalmettes))
 - Allowing configurating the alphabet via environment variable (Addresses [#151](https://github.com/noamgat/lm-format-enforcer/issues/151))
