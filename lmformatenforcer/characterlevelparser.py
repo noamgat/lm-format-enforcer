@@ -1,7 +1,7 @@
 import abc
 import os
 from dataclasses import dataclass, field
-from typing import Any, Hashable, List, Optional, TypeVar
+from typing import Any, Hashable, List, Optional
 from .consts import (COMPLETE_ALPHABET, CONFIG_ENV_VAR_DEFAULT_ALPHABET, WHITESPACE_CHARACTERS, DEFAULT_MAX_CONSECUTIVE_WHITESPACES, 
                      DEFAULT_FORCE_JSON_FIELD_ORDER, CONFIG_ENV_VAR_MAX_CONSECUTIVE_WHITESPACES, 
                      CONFIG_ENV_VAR_STRICT_JSON_FIELD_ORDER, CONFIG_ENV_VAR_MAX_JSON_ARRAY_LENGTH,
@@ -184,5 +184,3 @@ class SequenceParser(CharacterLevelParser):
         if all(key is not None for key in all_cache_keys):
             return ('sequence', all_cache_keys)
         return None
-
-
