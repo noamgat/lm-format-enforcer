@@ -11,7 +11,8 @@ __all__ = ['CharacterLevelParser',
            'FormatEnforcerAnalyzer',
            'MultiChoicesParser']
 
-from .characterlevelparser import CharacterLevelParser, CharacterLevelParserConfig, StringParser, UnionParser, SequenceParser, MultiChoicesParser
+from .characterlevelparser import CharacterLevelParser, CharacterLevelParserConfig, StringParser, UnionParser, SequenceParser
+from .multichoicesparser import MultiChoicesParser
 from .regexparser import RegexParser
 from .jsonschemaparser import JsonSchemaParser
 from .tokenenforcer import TokenEnforcer, TokenEnforcerTokenizerData
