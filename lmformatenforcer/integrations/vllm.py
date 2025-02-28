@@ -1,6 +1,7 @@
 try:
     import torch
     import vllm
+    from vllm.transformers_utils.tokenizer import MistralTokenizer
     from transformers import PreTrainedTokenizerBase
 except ImportError:
     raise ImportError('vllm is not installed. Please install it with "pip install vllm"')
@@ -33,11 +34,16 @@ class VLLMLogitsProcessor:
 
 def build_vllm_token_enforcer_tokenizer_data(tokenizer: Union[vllm.LLM, PreTrainedTokenizerBase]) -> TokenEnforcerTokenizerData:
     # There are many classes that can be passed here, this logic should work on all of them.
+    vocab_size = None
+    if hasattr(tokenizer, 'llm_engine'):
+        vocab_size = tokenizer.llm_engine.get_model_config().get_vocab_size()
     if hasattr(tokenizer, 'get_tokenizer'):
         tokenizer = tokenizer.get_tokenizer()
+    if isinstance(tokenizer, MistralTokenizer):
+        return build_token_enforcer_tokenizer_data(tokenizer, vocab_size)
     if hasattr(tokenizer, 'tokenizer'):
         tokenizer = tokenizer.tokenizer
-    return build_token_enforcer_tokenizer_data(tokenizer)
+    return build_token_enforcer_tokenizer_data(tokenizer, vocab_size)
 
 
 def build_vllm_logits_processor(llm: Union[vllm.LLM, PreTrainedTokenizerBase, TokenEnforcerTokenizerData], 
