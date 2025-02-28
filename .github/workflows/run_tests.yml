@@ -19,7 +19,7 @@ jobs:
       # reference the matrixe python version here.
       - uses: actions/setup-python@v2
         with:
-          python-version: 3.8
+          python-version: "3.10"
 
       # Cache the installation of Poetry itself, e.g. the next step. This prevents the workflow
       # from installing Poetry every time, which can be slow. Note the use of the Poetry version
@@ -30,7 +30,7 @@ jobs:
         uses: actions/cache@v2
         with:
           path: ~/.local
-          key: poetry-1.6.1-0
+          key: poetry-1.8.5-0
 
       # Install Poetry. You could do this manually, or there are several actions that do this.
       # `snok/install-poetry` seems to be minimal yet complete, and really just calls out to
@@ -43,7 +43,7 @@ jobs:
       # cache it.
       - uses: snok/install-poetry@v1
         with:
-          version: 1.6.1
+          version: 1.8.5
           virtualenvs-create: true
           virtualenvs-in-project: true
 

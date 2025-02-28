@@ -2,8 +2,8 @@ from __future__ import annotations
 import abc
 import os
 from dataclasses import dataclass, field
-from typing import Hashable, List, Optional, TypeVar
-from .consts import (COMPLETE_ALPHABET, WHITESPACE_CHARACTERS, DEFAULT_MAX_CONSECUTIVE_WHITESPACES, 
+from typing import Any, Hashable, List, Optional, TypeVar
+from .consts import (COMPLETE_ALPHABET, CONFIG_ENV_VAR_DEFAULT_ALPHABET, WHITESPACE_CHARACTERS, DEFAULT_MAX_CONSECUTIVE_WHITESPACES, 
                      DEFAULT_FORCE_JSON_FIELD_ORDER, CONFIG_ENV_VAR_MAX_CONSECUTIVE_WHITESPACES, 
                      CONFIG_ENV_VAR_STRICT_JSON_FIELD_ORDER, CONFIG_ENV_VAR_MAX_JSON_ARRAY_LENGTH,
                      DEFAULT_MAX_JSON_ARRAY_LENGTH)
@@ -14,7 +14,7 @@ def _parse_bool(s: str) -> bool:
     return s and (s.strip().lower() in ['true', '1'])
 
 
-def _env_or_default_field(env_var: str, default_val):
+def _env_or_default_field(env_var: str, default_val) -> Any:
     default_val_type = type(default_val)
     parser_func = _parse_bool if default_val_type == bool else default_val_type
     def factory_func():
@@ -24,7 +24,8 @@ def _env_or_default_field(env_var: str, default_val):
 
 @dataclass
 class CharacterLevelParserConfig:
-    alphabet: str = COMPLETE_ALPHABET
+    alphabet: str = _env_or_default_field(CONFIG_ENV_VAR_DEFAULT_ALPHABET, 
+                                          COMPLETE_ALPHABET)
     max_consecutive_whitespaces: int = _env_or_default_field(CONFIG_ENV_VAR_MAX_CONSECUTIVE_WHITESPACES, 
                                                              DEFAULT_MAX_CONSECUTIVE_WHITESPACES)
     """How many consective whitespaces the JsonSchemaParser will allow"""
@@ -129,8 +130,11 @@ class UnionParser(CharacterLevelParser):
     def can_end(self) -> bool:
         return any([parser.can_end() for parser in self.parsers])
     
-    def shortcut_key(self) -> Optional[str]:
-        return self.parsers[0].shortcut_key() if len(self.parsers) == 1 else None
+    def shortcut_key(self) -> Optional[Hashable]:
+        unique_shortcut_keys = set(parser.shortcut_key() for parser in self.parsers)
+        if len(unique_shortcut_keys) == 1:
+            return next(iter(unique_shortcut_keys))
+        return None
     
     def cache_key(self) -> Optional[Hashable]:
         all_cache_keys = tuple(parser.cache_key() for parser in self.parsers)

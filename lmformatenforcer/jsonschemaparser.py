@@ -160,7 +160,8 @@ class BaseParsingState(CharacterLevelParser):
 
 
 def _merge_object_schemas(base_schema: JsonSchemaObject, option_schema: JsonSchemaObject) -> JsonSchemaObject:
-    for property_name, property_value in base_schema.properties.items():
+    base_schema_properties = base_schema.properties or {}
+    for property_name, property_value in base_schema_properties.items():
         # We assume that if a property exists in both base and option, the option version will be
         # more specific, therefore we only take missing entries
         if property_name not in option_schema.properties:
@@ -201,13 +202,13 @@ def get_parser(
             max_length=value_schema.maxLength,
             pattern=value_schema.pattern,
         )
+    if value_schema.oneOf:
+        # We create a combined object schema for each option that includes the information from the parent
+        # And then create a UnionParser based on the combined options
+        merged_schemas = [_merge_object_schemas(value_schema, option_schema) for option_schema in value_schema.oneOf]
+        object_parsing_options = [ObjectParsingState(merged_schema, parsing_state) for merged_schema in merged_schemas]
+        return UnionParser(object_parsing_options)
     elif value_schema.type == "object":
-        if value_schema.oneOf:
-            # We create a combined object schema for each option that includes the information from the parent
-            # And then create a UnionParser based on the combined options
-            merged_schemas = [_merge_object_schemas(value_schema, option_schema) for option_schema in value_schema.oneOf]
-            object_parsing_options = [ObjectParsingState(merged_schema, parsing_state) for merged_schema in merged_schemas]
-            return UnionParser(object_parsing_options)
         return ObjectParsingState(value_schema, parsing_state)
     elif value_schema.type == None and value_schema.ref:
         value_class_name = value_schema.ref.split('/')[-1]
@@ -261,6 +262,9 @@ def get_parser(
     elif value_schema.type == "array":
         item_schema = value_schema.items or JsonSchemaParser.ANY_JSON_OBJECT_SCHEMA
         return ListParsingState(parsing_state, item_schema, value_schema.minItems, value_schema.maxItems)
+    elif isinstance(value_schema.type, list):
+        parsers = [get_parser(parsing_state, JsonSchemaObject(type=schema)) for schema in value_schema.type]
+        return UnionParser(parsers)
     else:
         raise Exception("Unsupported type " + str(value_schema.type))
 

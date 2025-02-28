@@ -1,5 +1,23 @@
 # LM Format Enforcer Changelog
 
+## v0.10.11
+- Fixed support for newer versions of transformer library
+
+## v0.10.10
+- Added support of multiple types for a field in json schema (Contributed by [Guillaume Calmettes](https://github.com/gcalmettes))
+- Allowing configurating the alphabet via environment variable (Addresses [#151](https://github.com/noamgat/lm-format-enforcer/issues/151))
+- Fixed CI build issues
+
+## v0.10.9
+- Added new sample: [Extracting structured data from vision models](https://github.com/noamgat/lm-format-enforcer/blob/main/samples/colab_llama32_vision_enforcer.ipynb)
+
+## v0.10.8
+- Fixed support for tokenizers with larger vocabularies than the models. Enables visual models such as Llama3.2
+- JsonSchemaParser: Fixed additionalProperies and oneOf edge cases
+
+## v0.10.7
+- [135] Updated Haystack V2 integration with latest API
+
 ## v0.10.6
 - Pickling improvements for easier multiprocessing support
 

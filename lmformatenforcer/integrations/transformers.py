@@ -1,8 +1,8 @@
 import functools
-from typing import Any, Callable, List, Tuple, Union
+from typing import Any, Callable, List, Optional, Tuple, Union
 try:
     from transformers import AutoModelForCausalLM
-    from transformers.generation.logits_process import LogitsWarper, PrefixConstrainedLogitsProcessor
+    from transformers.generation.logits_process import LogitsProcessor, PrefixConstrainedLogitsProcessor
     from transformers.tokenization_utils import PreTrainedTokenizerBase
 except ImportError:
     raise ImportError('transformers is not installed. Please install it with "pip install transformers[torch]"')
@@ -16,7 +16,7 @@ from ..characterlevelparser import CharacterLevelParser
 from ..tokenenforcer import TokenEnforcer, TokenEnforcerTokenizerData
 from ..analyzer import FormatEnforcerAnalyzer
 
-class LogitsSaverWarper(LogitsWarper):
+class LogitsSaverWarper(LogitsProcessor):
     def __init__(self, analyzer: FormatEnforcerAnalyzer) -> None:
         self.analyzer = analyzer
         
@@ -53,10 +53,10 @@ class LogitsSaverManager:
         self.model._get_logits_warper = self.old_warper
 
 
-def _build_regular_tokens_list(tokenizer: PreTrainedTokenizerBase) -> List[Tuple[int, str, bool]]:
+def _build_regular_tokens_list(tokenizer: PreTrainedTokenizerBase, vocab_size: int) -> List[Tuple[int, str, bool]]:
     token_0 = tokenizer.encode("0")[-1]
     regular_tokens = []
-    for token_idx in range(len(tokenizer)):
+    for token_idx in range(vocab_size):
         if token_idx in tokenizer.all_special_ids:
             continue
         # We prepend token 0 and skip the first letter of the result to get a space if the token is a start word.
@@ -73,8 +73,10 @@ def _decode_function(tokenizer: PreTrainedTokenizerBase, tokens: List[int]) -> s
     return cleaned
 
 
-def build_token_enforcer_tokenizer_data(tokenizer: PreTrainedTokenizerBase) -> TokenEnforcerTokenizerData:
-    regular_tokens = _build_regular_tokens_list(tokenizer)
+def build_token_enforcer_tokenizer_data(tokenizer: PreTrainedTokenizerBase, 
+                                        vocab_size: Optional[int] = None) -> TokenEnforcerTokenizerData:
+    vocab_size = vocab_size or len(tokenizer)
+    regular_tokens = _build_regular_tokens_list(tokenizer, vocab_size)
     decode_fn = functools.partial(_decode_function, tokenizer)
     return TokenEnforcerTokenizerData(regular_tokens, decode_fn, tokenizer.eos_token_id)
 
