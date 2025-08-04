@@ -1,5 +1,8 @@
 # LM Format Enforcer Changelog
 
+## v0.10.12
+- Ignoring leading ^ / trailing $ in json schema regexes, required for vLLM V1 support
+
 ## v0.10.11
 - Fixed support for newer versions of transformer library
 

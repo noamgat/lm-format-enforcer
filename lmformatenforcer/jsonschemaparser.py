@@ -534,6 +534,11 @@ class StringParsingState(PrimitiveParsingState):
         self.pattern = pattern
         if self.pattern and (self.min_length or self.max_length):
             raise LMFormatEnforcerException("String schema contains both a pattern and a min/max length, which is not currently supported")
+        # We implicitly force the string to match the entire regex, so leading ^ and trailing $ are reduntant.
+        if self.pattern and self.pattern.startswith("^"):
+            self.pattern = self.pattern[1:]
+        if self.pattern and self.pattern.endswith("$"):
+            self.pattern = self.pattern[:-1]
         self.regex_parser = regex_parser
         if self.pattern and not regex_parser:
             if self.pattern not in self.root.context.regex_parser_cache:

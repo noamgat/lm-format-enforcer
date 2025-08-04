@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "lm-format-enforcer"
-version = "0.10.11"
+version = "0.10.12"
 description = "Enforce the output format (JSON Schema, Regex etc) of a language model"
 authors = ["Noam Gat <noamgat@gmail.com>"]
 license = "MIT"
