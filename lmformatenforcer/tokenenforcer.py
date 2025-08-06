@@ -1,11 +1,12 @@
 from dataclasses import dataclass, field
 import sys
-from typing import Callable, Dict, Hashable, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, Hashable, List, Optional, Tuple, Union
 import logging
 
 from .exceptions import LMFormatEnforcerException
 from .characterlevelparser import CharacterLevelParser, ForceStopParser, CharacterLevelParserConfig
 from .tokenizerprefixtree import TokenizerPrefixTree, TokenizerPrefixTreeNode
+from .tokenlist import TokenList
 
 
 class TokenEnforcerTokenizerData:
@@ -14,7 +15,8 @@ class TokenEnforcerTokenizerData:
     def __init__(self, 
                  regular_tokens: List[Tuple[int, str, bool]], 
                  decoder: Callable[[List[int]], str],
-                 eos_token_id: Union[int, List[int]]):
+                 eos_token_id: Union[int, List[int]],
+                 vocab_size: int):
         """
         Create the tokenizer data that the TokenEnforcer needs. This can be reused for multiple TokenEnforcers if they work with the same tokenizer.
         :param regular_tokens: A list of tuples (token_id, token_string, is_new_word_token) for all the regular (not special) tokens in the tokenizer vocabulary.
@@ -27,6 +29,7 @@ class TokenEnforcerTokenizerData:
         self.decoder = decoder
         self.eos_token_id = eos_token_id
         self.tokenizer_alphabet = "".join(token_str for token_str in self.tokenizer_tree.root.children.keys() if len(token_str) == 1)
+        self.vocab_size = vocab_size
 
 
 class TokenEnforcer:
@@ -35,10 +38,11 @@ class TokenEnforcer:
     @dataclass
     class OutputTensorState:
         parser: CharacterLevelParser
-        allowed_tokens: List[int] = field(default_factory=list)
+        allowed_tokens: TokenList | None = field(default=None)
         current_word_tokens: List[int] = field(default_factory=list)
+        
 
-    def __init__(self, tokenizer_data: TokenEnforcerTokenizerData, parser: CharacterLevelParser):
+    def __init__(self, tokenizer_data: TokenEnforcerTokenizerData, parser: CharacterLevelParser, use_bitmask: bool = False):
         """
         Create a new TokenEnforcer.
         :param tokenizer_data: Per tokenizer data that the token enforcer needs in order to operate.
@@ -50,12 +54,15 @@ class TokenEnforcer:
         self.decoder = tokenizer_data.decoder
         self.eos_token_id = tokenizer_data.eos_token_id
         self.regular_tokens = tokenizer_data.regular_tokens
-        self.allowed_token_cache: Dict[Hashable, List[int]] = {}
+        self.allowed_token_cache: Dict[Hashable, Any] = {}
+        self.use_bitmask = use_bitmask
+        self.vocab_size = tokenizer_data.vocab_size
+        
         
         config = CharacterLevelParserConfig(alphabet=tokenizer_data.tokenizer_alphabet)
         parser.config = config
 
-    def get_allowed_tokens(self, token_sequence: List[int]) -> List[int]:
+    def get_allowed_tokens(self, token_sequence: List[int]) -> TokenList:
         """
         Get a list of allowed tokens, given a list of tokens that were already generated.
         :param token_sequence: The tokens that were already generated, and the next token will be generated for.
@@ -87,7 +94,8 @@ class TokenEnforcer:
 
     def _compute_allowed_tokens(self, state_tokens: Tuple, state: 'TokenEnforcer.OutputTensorState'):
         try:
-            allowed_tokens: List[int] = []
+            allowed_tokens: TokenList = TokenList(self.use_bitmask, self.vocab_size)
+            
             cache_key = state.parser.cache_key()
             if cache_key is not None and cache_key in self.allowed_token_cache:
                 state.allowed_tokens = self.allowed_token_cache[cache_key]
@@ -95,7 +103,10 @@ class TokenEnforcer:
             shortcut_key = state.parser.shortcut_key()
             self._collect_allowed_tokens(state.parser, self.tokenizer_tree.root, allowed_tokens, shortcut_key)
             if state.parser.can_end():
-                allowed_tokens.extend(self.eos_token_id if isinstance(self.eos_token_id, list) else [self.eos_token_id])
+                if isinstance(self.eos_token_id, list):
+                    allowed_tokens.extend(self.eos_token_id)                    
+                else:
+                    allowed_tokens.append(self.eos_token_id)
             if not allowed_tokens:
                 raise ValueError(f"Parser reached state with no allowed tokens")
             # root_state = next(state for state in self.prefix_states.values() if state.parser == self.root_parser)
@@ -117,7 +128,7 @@ class TokenEnforcer:
                               "CharacterLevelParser parameters")
             state.allowed_tokens = self.eos_token_id if isinstance(self.eos_token_id, list) else [self.eos_token_id]
 
-    def _collect_allowed_tokens(self, parser: CharacterLevelParser, tree_node: TokenizerPrefixTreeNode, allowed_tokens: List[int], shortcut_key: Optional[Hashable]):
+    def _collect_allowed_tokens(self, parser: CharacterLevelParser, tree_node: TokenizerPrefixTreeNode, allowed_tokens: TokenList, shortcut_key: Optional[Hashable]):
         allowed_tokens.extend(tree_node.tokens)
         allowed_characters = parser.get_allowed_characters()
         relevant_characters = tree_node.children.keys()

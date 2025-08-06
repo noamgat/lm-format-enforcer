@@ -32,7 +32,7 @@ def build_token_enforcer_tokenizer_data(tokenizer: ExLlamaV2Tokenizer) -> TokenE
         tensor = torch.tensor(tokens, dtype=torch.long)
         return tokenizer.decode(tensor)
     
-    return TokenEnforcerTokenizerData(regular_tokens, _decode, tokenizer.eos_token_id)
+    return TokenEnforcerTokenizerData(regular_tokens, _decode, tokenizer.eos_token_id, tokenizer.actual_vocab_size)
 
 
 class ExLlamaV2TokenEnforcerFilter:

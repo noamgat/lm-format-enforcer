@@ -38,7 +38,7 @@ def build_token_enforcer_tokenizer_data(llm: Llama) -> TokenEnforcerTokenizerDat
         except:
             return decoder_fn(sent[:-1])
     
-    return TokenEnforcerTokenizerData(regular_tokens, decoder_fn, llm.token_eos())
+    return TokenEnforcerTokenizerData(regular_tokens, decoder_fn, llm.token_eos(), llm.n_vocab())
 
 
 class LlamaCppLogitsProcessor:

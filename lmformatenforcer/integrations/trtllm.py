@@ -65,7 +65,7 @@ def build_trtlmm_tokenizer_data(tokenizer: PreTrainedTokenizerBase) -> TokenEnfo
         tensor = torch.tensor(tokens, dtype=torch.long)
         return tokenizer.decode(tensor)
 
-    tokenizer_data = TokenEnforcerTokenizerData(regular_tokens, _decode, tokenizer.eos_token_id)
+    tokenizer_data = TokenEnforcerTokenizerData(regular_tokens, _decode, tokenizer.eos_token_id, len(tokenizer))
     return tokenizer_data
 
 
