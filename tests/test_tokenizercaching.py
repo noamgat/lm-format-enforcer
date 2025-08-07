@@ -3,7 +3,7 @@ from lmformatenforcer.tokenizerprefixtree import JsonFreetextTokenCache
 
 def test_json_freetext_cache():
     token_to_str = {}
-    cache = JsonFreetextTokenCache()
+    cache = JsonFreetextTokenCache(False, 0)
     test_length = 500
     letters = "abcde"
     num_letters = len(letters)
@@ -19,7 +19,7 @@ def test_json_freetext_cache():
     cache.freeze()
 
     def _assert_allowed_tokens(_min_remaining, _max_length, _num_expected_tokens):
-        allowed_tokens = cache.lookup_allowed_tokens(_min_remaining, _max_length)
+        allowed_tokens = cache.lookup_allowed_tokens(_min_remaining, _max_length).allowed_tokens
         if len(allowed_tokens) != _num_expected_tokens:
             allowed_token_strs = "|".join(token_to_str[token_idx] for token_idx in allowed_tokens)
             raise Exception(f"Min={_min_remaining}, Max={_max_length}, Expected {_num_expected_tokens}, got {len(allowed_tokens)} : {allowed_token_strs}")

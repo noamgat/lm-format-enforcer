@@ -25,14 +25,14 @@ def _build_regular_tokens_list(tokenizer: ExLlamaV2Tokenizer) -> List[Tuple[int,
 
 
 
-def build_token_enforcer_tokenizer_data(tokenizer: ExLlamaV2Tokenizer) -> TokenEnforcerTokenizerData:
+def build_token_enforcer_tokenizer_data(tokenizer: ExLlamaV2Tokenizer, use_bitmask: bool = False) -> TokenEnforcerTokenizerData:
     regular_tokens = _build_regular_tokens_list(tokenizer)
 
     def _decode(tokens: List[int]) -> str:
         tensor = torch.tensor(tokens, dtype=torch.long)
         return tokenizer.decode(tensor)
     
-    return TokenEnforcerTokenizerData(regular_tokens, _decode, tokenizer.eos_token_id, tokenizer.actual_vocab_size)
+    return TokenEnforcerTokenizerData(regular_tokens, _decode, tokenizer.eos_token_id, use_bitmask, tokenizer.actual_vocab_size)
 
 
 class ExLlamaV2TokenEnforcerFilter:

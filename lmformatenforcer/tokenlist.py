@@ -28,10 +28,13 @@ class TokenList:
 
     def extend(self, token_ids):
         if self.use_bitmask:
-            for token_id in token_ids:
-                element_index = token_id // 32
-                bit_index = token_id % 32
-                self.allowed_tokens[element_index] |= (1 << bit_index)
+            if isinstance(token_ids, torch.Tensor):
+                torch.Tensor.bitwise_or_(self.allowed_tokens, token_ids)
+            else:
+                for token_id in token_ids:
+                    element_index = token_id // 32
+                    bit_index = token_id % 32
+                    self.allowed_tokens[element_index] |= (1 << bit_index)
         else:
             self.allowed_tokens.extend(token_ids)
 

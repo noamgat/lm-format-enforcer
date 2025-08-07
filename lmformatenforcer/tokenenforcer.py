@@ -16,6 +16,7 @@ class TokenEnforcerTokenizerData:
                  regular_tokens: List[Tuple[int, str, bool]], 
                  decoder: Callable[[List[int]], str],
                  eos_token_id: Union[int, List[int]],
+                 use_bitmask: bool,
                  vocab_size: int):
         """
         Create the tokenizer data that the TokenEnforcer needs. This can be reused for multiple TokenEnforcers if they work with the same tokenizer.
@@ -25,11 +26,12 @@ class TokenEnforcerTokenizerData:
         :param eos_token_id: The token id(s) of the end-of-string token(s).
         """
         self.regular_tokens = regular_tokens
-        self.tokenizer_tree = TokenizerPrefixTree(regular_tokens)
+        self.tokenizer_tree = TokenizerPrefixTree(regular_tokens, use_bitmask, vocab_size)
         self.decoder = decoder
         self.eos_token_id = eos_token_id
         self.tokenizer_alphabet = "".join(token_str for token_str in self.tokenizer_tree.root.children.keys() if len(token_str) == 1)
         self.vocab_size = vocab_size
+        self.use_bitmask = use_bitmask
 
 
 class TokenEnforcer:
@@ -42,7 +44,7 @@ class TokenEnforcer:
         current_word_tokens: List[int] = field(default_factory=list)
         
 
-    def __init__(self, tokenizer_data: TokenEnforcerTokenizerData, parser: CharacterLevelParser, use_bitmask: bool = False):
+    def __init__(self, tokenizer_data: TokenEnforcerTokenizerData, parser: CharacterLevelParser):
         """
         Create a new TokenEnforcer.
         :param tokenizer_data: Per tokenizer data that the token enforcer needs in order to operate.
@@ -55,7 +57,7 @@ class TokenEnforcer:
         self.eos_token_id = tokenizer_data.eos_token_id
         self.regular_tokens = tokenizer_data.regular_tokens
         self.allowed_token_cache: Dict[Hashable, Any] = {}
-        self.use_bitmask = use_bitmask
+        self.use_bitmask = tokenizer_data.use_bitmask
         self.vocab_size = tokenizer_data.vocab_size
         
         
@@ -146,7 +148,7 @@ class TokenEnforcer:
             min_remaining = min(cache.max_token_len, max(0, min_len - cur_len))  # no " allowed before this many chars
             max_allowed_len = min(cache.max_token_len, max_len - cur_len)  # max new characters allowed (before ")
 
-            allowed_tokens.extend(cache.lookup_allowed_tokens(min_remaining, max_allowed_len))
+            allowed_tokens.extend(cache.lookup_allowed_tokens(min_remaining, max_allowed_len).allowed_tokens)
             characters_to_explore = characters_to_explore.intersection(['"'])
 
         for character in characters_to_explore:
