@@ -23,7 +23,7 @@ class TRTLLMLogitsProcessor:
             if self.analyzer:
                 self.analyzer.report_raw_logits(batch_input_ids[idx], logits[idx].tolist())
 
-            allowed_tokens = self.token_enforcer.get_allowed_tokens(self._trim(batch_input_ids[idx]))
+            allowed_tokens = self.token_enforcer.get_allowed_tokens(self._trim(batch_input_ids[idx])).allowed_tokens
 
             if self.mask is not None:
                 self.mask.fill_(self.mask_val)

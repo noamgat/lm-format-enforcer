@@ -88,6 +88,8 @@ class JsonFreetextTokenCache:
             tokens_without_quote = self.regular_tokens_length_cache.get_indices_between_length(-1, max_len)
             combined = tokens_with_quote + tokens_without_quote
             new_tokenlist = TokenList(self.use_bitmask, self.vocab_size)
+            # TODO: This causes some heavy computations in first uses in use_bitmask=True case,
+            # bitmask support can be added to get_indices_between_length() to be faster.
             new_tokenlist.extend(combined)
             self.allowlist_cache[cache_key] = new_tokenlist
         return self.allowlist_cache[cache_key]

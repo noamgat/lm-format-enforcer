@@ -20,8 +20,8 @@ class TokenList:
     
     def append(self, token_id):
         if self.use_bitmask:
-            element_index = token_id // 32
-            bit_index = token_id % 32
+            element_index = token_id >> 5
+            bit_index = token_id & 0x1f
             self.allowed_tokens[element_index] |= (1 << bit_index)
         else:
             self.allowed_tokens.append(token_id)
@@ -32,8 +32,8 @@ class TokenList:
                 torch.Tensor.bitwise_or_(self.allowed_tokens, token_ids)
             else:
                 for token_id in token_ids:
-                    element_index = token_id // 32
-                    bit_index = token_id % 32
+                    element_index = token_id >> 5
+                    bit_index = token_id & 0x1f
                     self.allowed_tokens[element_index] |= (1 << bit_index)
         else:
             self.allowed_tokens.extend(token_ids)

@@ -52,7 +52,7 @@ class LlamaCppLogitsProcessor:
         token_sequence = input_ids.tolist()
         if self.analyzer:
             self.analyzer.report_raw_logits(token_sequence, scores.tolist())
-        allowed_tokens = self.token_enforcer.get_allowed_tokens(token_sequence)
+        allowed_tokens = self.token_enforcer.get_allowed_tokens(token_sequence).allowed_tokens
         if self.mask is None:
             self.mask = np.ones(scores.shape, bool)
         else:

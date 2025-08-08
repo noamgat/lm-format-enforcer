@@ -89,7 +89,7 @@ class TransformersPrefixAllowedTokensFn:
         
     def __call__(self, batch_id: int, sent: torch.Tensor) -> List[int]:
         token_sequence = sent.tolist()
-        return self.token_enforcer.get_allowed_tokens(token_sequence)
+        return self.token_enforcer.get_allowed_tokens(token_sequence).allowed_tokens
 
 
 def build_transformers_prefix_allowed_tokens_fn(tokenizer_data: Union[PreTrainedTokenizerBase, TokenEnforcerTokenizerData], 
