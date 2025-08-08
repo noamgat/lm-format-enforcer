@@ -38,7 +38,8 @@ def build_token_enforcer_tokenizer_data(llm: Llama) -> TokenEnforcerTokenizerDat
         except:
             return decoder_fn(sent[:-1])
     
-    return TokenEnforcerTokenizerData(regular_tokens, decoder_fn, llm.token_eos())
+    use_bitmask = False
+    return TokenEnforcerTokenizerData(regular_tokens, decoder_fn, llm.token_eos(), use_bitmask, llm.n_vocab())
 
 
 class LlamaCppLogitsProcessor:
@@ -51,7 +52,7 @@ class LlamaCppLogitsProcessor:
         token_sequence = input_ids.tolist()
         if self.analyzer:
             self.analyzer.report_raw_logits(token_sequence, scores.tolist())
-        allowed_tokens = self.token_enforcer.get_allowed_tokens(token_sequence)
+        allowed_tokens = self.token_enforcer.get_allowed_tokens(token_sequence).allowed_tokens
         if self.mask is None:
             self.mask = np.ones(scores.shape, bool)
         else:

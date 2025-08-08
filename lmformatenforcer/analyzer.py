@@ -33,7 +33,7 @@ class FormatEnforcerAnalyzer:
             prefix_tuple = tuple(prefix)
             if prefix_tuple in self.raw_logits:
                 scores_matrix.append(self.raw_logits[prefix_tuple])
-                allowed_tokens_matrix.append(self.token_enforcer.get_allowed_tokens(prefix))
+                allowed_tokens_matrix.append(self.token_enforcer.get_allowed_tokens(prefix).allowed_tokens)
 
         logits = np.array(scores_matrix) # n_tokens * vocab_size
         softmax_logits = _softmax(logits) # n_tokens * vocab_size

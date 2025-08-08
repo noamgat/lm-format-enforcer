@@ -1,5 +1,8 @@
 # LM Format Enforcer Changelog
 
+## v0.11.1
+- Added `use_bitmask` flag to TokenEnforcerTokenizerData which causes the allowed tokens data to be torch tensor bitmask based, for smooth vLLM V1 integration. This is a breaking change if you directly use the `TokenEnforcer.get_allowed_tokens()` function as its return type has changed.
+
 ## v0.10.12
 - Ignoring leading ^ / trailing $ in json schema regexes, required for vLLM V1 support
 

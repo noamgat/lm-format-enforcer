@@ -21,7 +21,7 @@ class VLLMLogitsProcessor:
         token_sequence = input_ids
         if self.analyzer:
             self.analyzer.report_raw_logits(token_sequence, scores.tolist())
-        allowed_tokens = self.token_enforcer.get_allowed_tokens(token_sequence)
+        allowed_tokens = self.token_enforcer.get_allowed_tokens(token_sequence).allowed_tokens
         if self.mask is not None:
             self.mask.fill_(-math.inf)
         else:
@@ -32,7 +32,7 @@ class VLLMLogitsProcessor:
         return scores
 
 
-def build_vllm_token_enforcer_tokenizer_data(tokenizer: Union[vllm.LLM, PreTrainedTokenizerBase]) -> TokenEnforcerTokenizerData:
+def build_vllm_token_enforcer_tokenizer_data(tokenizer: Union[vllm.LLM, PreTrainedTokenizerBase], use_bitmask: bool = False) -> TokenEnforcerTokenizerData:
     # There are many classes that can be passed here, this logic should work on all of them.
     vocab_size = None
     if hasattr(tokenizer, 'llm_engine'):
@@ -40,10 +40,10 @@ def build_vllm_token_enforcer_tokenizer_data(tokenizer: Union[vllm.LLM, PreTrain
     if hasattr(tokenizer, 'get_tokenizer'):
         tokenizer = tokenizer.get_tokenizer()
     if isinstance(tokenizer, MistralTokenizer):
-        return build_token_enforcer_tokenizer_data(tokenizer, vocab_size)
+        return build_token_enforcer_tokenizer_data(tokenizer, use_bitmask, vocab_size)
     if hasattr(tokenizer, 'tokenizer'):
         tokenizer = tokenizer.tokenizer
-    return build_token_enforcer_tokenizer_data(tokenizer, vocab_size)
+    return build_token_enforcer_tokenizer_data(tokenizer, use_bitmask, vocab_size)
 
 
 def build_vllm_logits_processor(llm: Union[vllm.LLM, PreTrainedTokenizerBase, TokenEnforcerTokenizerData], 

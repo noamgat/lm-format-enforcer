@@ -10,7 +10,7 @@ import logging
             
 
 _tokenizer: Optional[PreTrainedTokenizerBase] = None
-_tokenizer_data: Optional[TokenEnforcerTokenizerData] = None
+_tokenizer_data: dict[bool, TokenEnforcerTokenizerData] = {}
 
 
 class CharacterNotAllowedException(LMFormatEnforcerException):
@@ -53,8 +53,11 @@ def assert_parser_with_string_token_enforcer(string: str, parser: CharacterLevel
             logging.basicConfig(level=logging.INFO)
             logging.warning("Encountered out-of-tokenizer character, LMFE does not deal with this well")
     
-    if _tokenizer_data is None:
-        _tokenizer_data = build_token_enforcer_tokenizer_data(_tokenizer)
+    use_bitmask = len(string) % 2 == 1  # Consistent per test, varied per entire testset
+
+    if use_bitmask not in _tokenizer_data:
+        _tokenizer_data[use_bitmask] = build_token_enforcer_tokenizer_data(_tokenizer, use_bitmask, len(_tokenizer))
+    tokenizer_data = _tokenizer_data[use_bitmask]
         
     prompt = "This is my question:\n\n"
     initial_token_array = _tokenizer.encode(prompt)
@@ -67,7 +70,8 @@ def assert_parser_with_string_token_enforcer(string: str, parser: CharacterLevel
     if not eos_token_id:
         raise ValueError(f"Tokenizer does not have {'an EOS token' if eos_token_id is None else 'EOS tokens'}")
     
-    token_enforcer = TokenEnforcer(_tokenizer_data, parser)
+    
+    token_enforcer = TokenEnforcer(tokenizer_data, parser)
     # The token enforcer is stateful - it keeps track of the parsing state as tokens arrive on a token by token basis.
     # We simulate a language model that "chooses" the next token in the encoded sequence, and check that it is in the
     # allowed list at every timestep.
@@ -80,7 +84,7 @@ def assert_parser_with_string_token_enforcer(string: str, parser: CharacterLevel
         allowed_tokens = token_enforcer.get_allowed_tokens(prefix)
         if prefix_length < len(target_token_array):
             next_token = target_token_array[prefix_length]
-            if next_token not in allowed_tokens:
+            if not allowed_tokens.is_token_allowed(next_token):
                 if expect_success:
                     decoded_before = _tokenizer.decode(prefix, skip_special_tokens=True)
                     decoded_after = _tokenizer.decode(prefix + [next_token], skip_special_tokens=True)
@@ -91,7 +95,7 @@ def assert_parser_with_string_token_enforcer(string: str, parser: CharacterLevel
                     return  # Test success
         else:
             # Reached the end of the sequence, check that ending state matches expected ending state
-            can_end = any(token in allowed_tokens for token in (eos_token_id if isinstance(eos_token_id, list) else [eos_token_id]))
+            can_end = any(allowed_tokens.is_token_allowed(token) for token in (eos_token_id if isinstance(eos_token_id, list) else [eos_token_id]))
             if can_end and not expect_success:
                 raise ValueError("Parser succeeded when it should have failed")
             if not can_end and expect_success:

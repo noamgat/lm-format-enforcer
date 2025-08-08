@@ -2,6 +2,8 @@ from collections import OrderedDict
 from typing import Dict, List, Set, Tuple
 import json
 
+from .tokenlist import TokenList
+
 class TokenizerPrefixTreeNode:
     def __init__(self) -> None:
         self.tokens: List[int] = []
@@ -46,12 +48,14 @@ class JsonFreetextTokenCache:
                 end_index = len(self.tokens)
             return self.tokens[start_index:end_index]
 
-    def __init__(self, ) -> None:
+    def __init__(self, use_bitmask: bool, vocab_size: int) -> None:
         self.token_num_to_str: Dict[int, str] = {}
-        self.allowlist_cache: Dict[Tuple[int, int], Tuple[int, ...]] = {}
+        self.allowlist_cache: Dict[Tuple[int, int], TokenList] = {}
         self.max_token_len = 0
         self.regular_tokens_length_cache = JsonFreetextTokenCache._StringLengthTokenCache()
         self.quote_tokens_length_cache = JsonFreetextTokenCache._StringLengthTokenCache()
+        self.use_bitmask = use_bitmask
+        self.vocab_size = vocab_size
 
     def add_token(self, token_str: str, token_int: int):
         assert not self.allowlist_cache, "Cannot add more tokens after allowlists were precalculated"
@@ -72,7 +76,7 @@ class JsonFreetextTokenCache:
 
         self.token_num_to_str[token_int] = token_str
 
-    def lookup_allowed_tokens(self, min_remaining: int, max_len: int) -> Tuple[int, ...]:
+    def lookup_allowed_tokens(self, min_remaining: int, max_len: int) -> TokenList:
         """
         Get the list of tokens that are allowed within a JSON string, such that:
         1. all candidate tokens are at most `max_len` characters long (excluding the trailing quote), and
@@ -83,7 +87,11 @@ class JsonFreetextTokenCache:
             tokens_with_quote = self.quote_tokens_length_cache.get_indices_between_length(min_remaining + 1, max_len + 1)
             tokens_without_quote = self.regular_tokens_length_cache.get_indices_between_length(-1, max_len)
             combined = tokens_with_quote + tokens_without_quote
-            self.allowlist_cache[cache_key] = tuple(combined)
+            new_tokenlist = TokenList(self.use_bitmask, self.vocab_size)
+            # TODO: This causes some heavy computations in first uses in use_bitmask=True case,
+            # bitmask support can be added to get_indices_between_length() to be faster.
+            new_tokenlist.extend(combined)
+            self.allowlist_cache[cache_key] = new_tokenlist
         return self.allowlist_cache[cache_key]
 
     def freeze(self) -> None:
@@ -111,9 +119,9 @@ class JsonFreetextTokenCache:
 
 
 class TokenizerPrefixTree:
-    def __init__(self, regular_tokens: List[Tuple[int, str, bool]]):
+    def __init__(self, regular_tokens: List[Tuple[int, str, bool]], use_bitmask: bool, vocab_size: int):
         self.root = TokenizerPrefixTreeNode()
-        self.json_freetext_tokens = JsonFreetextTokenCache()
+        self.json_freetext_tokens = JsonFreetextTokenCache(use_bitmask, vocab_size)
         self.new_word_tokens: Set[int] = set()
         self.tokens_to_strs = {token_idx: token_str for token_idx, token_str, _ in regular_tokens}
         for token_idx, decoded, is_new_word in regular_tokens:

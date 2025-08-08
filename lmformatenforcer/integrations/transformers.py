@@ -74,11 +74,13 @@ def _decode_function(tokenizer: PreTrainedTokenizerBase, tokens: List[int]) -> s
 
 
 def build_token_enforcer_tokenizer_data(tokenizer: PreTrainedTokenizerBase, 
-                                        vocab_size: Optional[int] = None) -> TokenEnforcerTokenizerData:
+                                        use_bitmask: bool = False,
+                                        vocab_size: Optional[int] = None,
+                                        ) -> TokenEnforcerTokenizerData:
     vocab_size = vocab_size or len(tokenizer)
     regular_tokens = _build_regular_tokens_list(tokenizer, vocab_size)
     decode_fn = functools.partial(_decode_function, tokenizer)
-    return TokenEnforcerTokenizerData(regular_tokens, decode_fn, tokenizer.eos_token_id)
+    return TokenEnforcerTokenizerData(regular_tokens, decode_fn, tokenizer.eos_token_id, use_bitmask, len(tokenizer))
 
 
 class TransformersPrefixAllowedTokensFn:
@@ -87,7 +89,7 @@ class TransformersPrefixAllowedTokensFn:
         
     def __call__(self, batch_id: int, sent: torch.Tensor) -> List[int]:
         token_sequence = sent.tolist()
-        return self.token_enforcer.get_allowed_tokens(token_sequence)
+        return self.token_enforcer.get_allowed_tokens(token_sequence).allowed_tokens
 
 
 def build_transformers_prefix_allowed_tokens_fn(tokenizer_data: Union[PreTrainedTokenizerBase, TokenEnforcerTokenizerData], 
