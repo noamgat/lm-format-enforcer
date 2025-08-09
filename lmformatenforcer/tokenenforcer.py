@@ -25,8 +25,9 @@ class TokenEnforcerTokenizerData:
         :param decoder: A function that decodes a list of token ids into a string.
         :param eos_token_id: The token id(s) of the end-of-string token(s).
         """
-        self.regular_tokens = regular_tokens
-        self.tokenizer_tree = TokenizerPrefixTree(regular_tokens, use_bitmask, vocab_size)
+        filtered_regular_tokens = [token_tuple for token_tuple in regular_tokens if token_tuple[0] <= vocab_size]
+        self.regular_tokens = filtered_regular_tokens
+        self.tokenizer_tree = TokenizerPrefixTree(self.regular_tokens, use_bitmask, vocab_size)
         self.decoder = decoder
         self.eos_token_id = eos_token_id
         self.tokenizer_alphabet = "".join(token_str for token_str in self.tokenizer_tree.root.children.keys() if len(token_str) == 1)
@@ -128,7 +129,11 @@ class TokenEnforcer:
                               "Terminating the parser. Please open an issue at \n"
                               "https://github.com/noamgat/lm-format-enforcer/issues with the prefix and "
                               "CharacterLevelParser parameters")
-            state.allowed_tokens = self.eos_token_id if isinstance(self.eos_token_id, list) else [self.eos_token_id]
+            state.allowed_tokens = TokenList(self.use_bitmask, self.vocab_size)
+            if isinstance(self.eos_token_id, list):
+                state.allowed_tokens.extend(self.eos_token_id)
+            else:
+                state.allowed_tokens.append(self.eos_token_id)
 
     def _collect_allowed_tokens(self, parser: CharacterLevelParser, tree_node: TokenizerPrefixTreeNode, allowed_tokens: TokenList, shortcut_key: Optional[Hashable]):
         allowed_tokens.extend(tree_node.tokens)
