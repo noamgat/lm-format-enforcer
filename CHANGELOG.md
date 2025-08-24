@@ -1,5 +1,8 @@
 # LM Format Enforcer Changelog
 
+## v0.11.3
+- Minor fixes for vLLM V1 integration
+
 ## v0.11.2
 - Minor fixes for vLLM V1 integration
 
