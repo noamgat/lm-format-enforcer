@@ -68,7 +68,7 @@ def _build_regular_tokens_list(tokenizer: PreTrainedTokenizerBase, vocab_size: i
 
 
 def _decode_function(tokenizer: PreTrainedTokenizerBase, tokens: List[int]) -> str:
-    decoded = tokenizer.decode(tokens)
+    decoded = tokenizer.decode(tokens, clean_up_tokenization_spaces=False)
     cleaned = decoded.rstrip('�')
     return cleaned
 
