@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 import sys
 from typing import Any, Callable, Dict, Hashable, List, Optional, Tuple, Union
 import logging
@@ -62,8 +62,8 @@ class TokenEnforcer:
         self.vocab_size = tokenizer_data.vocab_size
         
         
-        config = CharacterLevelParserConfig(alphabet=tokenizer_data.tokenizer_alphabet)
-        parser.config = config
+        # Preserve the parser's existing config (e.g., force_json_field_order) when updating alphabet
+        parser.config = replace(parser.config, alphabet=tokenizer_data.tokenizer_alphabet)
 
     def get_allowed_tokens(self, token_sequence: List[int]) -> TokenList:
         """
