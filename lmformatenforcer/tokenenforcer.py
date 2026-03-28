@@ -62,8 +62,12 @@ class TokenEnforcer:
         self.vocab_size = tokenizer_data.vocab_size
         
         
-        config = CharacterLevelParserConfig(alphabet=tokenizer_data.tokenizer_alphabet)
-        parser.config = config
+        # Preserve existing config if it exists, only update alphabet
+        if parser.config is not None:
+            parser.config.alphabet = tokenizer_data.tokenizer_alphabet
+        else:
+            config = CharacterLevelParserConfig(alphabet=tokenizer_data.tokenizer_alphabet)
+            parser.config = config
 
     def get_allowed_tokens(self, token_sequence: List[int]) -> TokenList:
         """
