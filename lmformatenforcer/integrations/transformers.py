@@ -3,7 +3,10 @@ from typing import Any, Callable, List, Optional, Tuple, Union
 try:
     from transformers import AutoModelForCausalLM
     from transformers.generation.logits_process import LogitsProcessor, PrefixConstrainedLogitsProcessor
-    from transformers.tokenization_utils import PreTrainedTokenizerBase
+    try:
+        from transformers import PreTrainedTokenizerBase  # transformers>= 5.0.0
+    except ImportError:
+        from transformers.tokenization_utils import PreTrainedTokenizerBase
 except ImportError:
     raise ImportError('transformers is not installed. Please install it with "pip install transformers[torch]"')
 
@@ -68,7 +71,7 @@ def _build_regular_tokens_list(tokenizer: PreTrainedTokenizerBase, vocab_size: i
 
 
 def _decode_function(tokenizer: PreTrainedTokenizerBase, tokens: List[int]) -> str:
-    decoded = tokenizer.decode(tokens)
+    decoded = tokenizer.decode(tokens, clean_up_tokenization_spaces=False)
     cleaned = decoded.rstrip('�')
     return cleaned
 

@@ -831,3 +831,37 @@ def test_additional_properties():
     schema = {'type': 'object', 'properties': {'snippets': {'title': 'snippets', 'type': 'string'}, 'overall_sentiment': {'title': 'overall_sentiment', 'type': 'string'}}, 'required': ['snippets', 'overall_sentiment'], 'additionalProperties': False, 'definitions': {}} 
     completion = """{"snippets": "What a beautiful day", "overall_sentiment": "Positive"}"""
     _test_json_schema_parsing_with_string(completion, schema, True)
+
+
+def test_additional_properties_boolean_true():
+    """Issue #69: additionalProperties=True on a dictionary-style object should not crash."""
+    schema = {
+        "type": "object",
+        "additionalProperties": True
+    }
+    # Should accept any key/value pairs
+    _test_json_schema_parsing_with_string('{"key": "value"}', schema, True)
+    _test_json_schema_parsing_with_string('{"a": 1, "b": "hello"}', schema, True)
+    _test_json_schema_parsing_with_string('{}', schema, True)
+
+
+def test_additional_properties_boolean_false_dict():
+    """Issue #69: additionalProperties=False on a dictionary-style object should not crash."""
+    schema = {
+        "type": "object",
+        "additionalProperties": False
+    }
+    # Should still allow parsing (False is treated as any-type fallback since there are no properties defined)
+    _test_json_schema_parsing_with_string('{"key": "value"}', schema, True)
+    _test_json_schema_parsing_with_string('{}', schema, True)
+
+
+def test_additional_properties_schema_object():
+    """additionalProperties as a schema object should constrain value types."""
+    schema = {
+        "type": "object",
+        "additionalProperties": {"type": "integer"}
+    }
+    _test_json_schema_parsing_with_string('{"a": 1, "b": 2}', schema, True)
+    _test_json_schema_parsing_with_string('{"a": "string_value"}', schema, False)
+

@@ -342,7 +342,7 @@ class ObjectParsingState(BaseParsingState):
                 self.current_key = self.root.context.active_parser.last_parsed_string
                 self.existing_keys.append(self.current_key)
                 if self.is_dictionary:
-                    if self.schema_object.additionalProperties:
+                    if isinstance(self.schema_object.additionalProperties, JsonSchemaObject):
                         value_schema = self.schema_object.additionalProperties
                     else:
                         value_schema = JsonSchemaParser.ANY_JSON_OBJECT_SCHEMA

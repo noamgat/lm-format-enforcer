@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 import sys
 from typing import Any, Callable, Dict, Hashable, List, Optional, Tuple, Union
 import logging
@@ -59,15 +59,15 @@ class TokenEnforcer:
         self.regular_tokens = tokenizer_data.regular_tokens
         self.allowed_token_cache: Dict[Hashable, Any] = {}
         self.use_bitmask = tokenizer_data.use_bitmask
-        self.vocab_size = tokenizer_data.vocab_size
-        
+        self.vocab_size = tokenizer_data.vocab_size        
         
         # Preserve existing config if it exists, only update alphabet
         if parser.config is not None:
-            parser.config.alphabet = tokenizer_data.tokenizer_alphabet
+            parser.config = replace(parser.config, alphabet=tokenizer_data.tokenizer_alphabet)
         else:
             config = CharacterLevelParserConfig(alphabet=tokenizer_data.tokenizer_alphabet)
             parser.config = config
+        
 
     def get_allowed_tokens(self, token_sequence: List[int]) -> TokenList:
         """
