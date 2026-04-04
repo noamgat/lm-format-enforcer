@@ -702,9 +702,15 @@ class ListParsingState(PrimitiveParsingState):
         num_items = self.num_items_seen
         top_parser = self.root.context.active_parser.object_stack[-1]
         is_on_top = top_parser == self or isinstance(top_parser, UnionParser) and self in top_parser.parsers
-        if (not is_on_top) and self.root.context.active_parser.last_non_whitespace_character != "[":
-            # If there is an active parser above us, and the last character is not [, 
-            # there is an active item parser on the stack that we did not count yet.
+        # Issue #160 fix: Only increment num_items if top parser is NOT a ListParsingState,
+        # which indicates we're in a nested array scenario where inner list's completion
+        # should not increment outer list's item count
+        if (not is_on_top and 
+            not isinstance(top_parser, ListParsingState) and
+            self.root.context.active_parser.last_non_whitespace_character != "["):
+            # If there is an active parser above us (and not a nested list),
+            # and the last character is not [, there is an active item parser on the
+            # stack that we did not count yet.
             num_items += 1
         control_characters = ""
         has_enough_items = self.min_items is None or num_items >= self.min_items
