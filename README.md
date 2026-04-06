@@ -1,5 +1,7 @@
 # lm-format-enforcer
 
+> **Fork Note:** This fork adds the `MultiChoicesParser`, an efficient incremental parser for multi-choice grammars optimized for very large lists of choices (up to millions of entries). See the [Character Level Parser](#character-level-parser) section for details.
+
 ![LMFE Logo](https://raw.githubusercontent.com/noamgat/lm-format-enforcer/main/docs/Logo.png)
 
 **Enforce the output format (JSON Schema, Regex etc) of a language model**
@@ -136,9 +138,10 @@ Parsing a string into any kind of formatter can be looked at as an implicit tree
 ```CharacterLevelParser``` is an interface for parsing according to this implicit structure. ```add_character()``` and ```get_allowed_characters()``` can be seen as tree traversal methods.
 
 There are several implementations of this interface:
-- ```JsonSchemaParser``` - parses according to a json schema (or pure json output - `JsonSchemaParser(None) will result in any json object allowed`). 
+- ```JsonSchemaParser``` - parses according to a json schema (or pure json output - `JsonSchemaParser(None) will result in any json object allowed`).
 - ```StringParser``` - forces an exact string (used mainly for diagnostics)
 - ```RegexParser``` - parses according to a regular expression. Note that this cannot use the built in python regex and uses a manually implemented one (via the [interegular](https://pypi.org/project/interegular/) library), so it doesn't cover 100% of the regex standard.
+- ```MultiChoicesParser``` - an efficient incremental parser for multi-choice grammars, optimized for very large lists of choices (up to millions of entries). Based on the [multi-choices-parser](https://github.com/HichemAK/multi-choices-parser) package.
 ### Tokenizer Prefix Tree
 
 Given a tokenizer used by a certain language model, we can build a prefix tree of all the tokens that the language model can generate. This is done by generating all possible sequences of tokens, and adding them to the tree.

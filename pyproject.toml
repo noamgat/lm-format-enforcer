@@ -29,11 +29,12 @@ packages = [
 "Bug Tracker" = "https://github.com/noamgat/lm-format-enforcer/issues"
 
 [tool.poetry.dependencies]
-python = ">=3.8,<4.0"
+python = ">=3.8.1,<4.0"
 pydantic = ">=1.10.8"
 interegular = ">=0.3.2"
 packaging = "*"
 pyyaml = "*"
+multi-choices-parser = ">=0.10.0"
 
 [tool.poetry.group.dev.dependencies]
 mock = "5.1.0"
