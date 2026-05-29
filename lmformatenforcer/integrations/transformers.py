@@ -6,7 +6,7 @@ try:
     try:
         from transformers import PreTrainedTokenizerBase  # transformers>= 5.0.0
     except ImportError:
-        from transformers.tokenization_utils import PreTrainedTokenizerBase
+        from transformers.tokenization_utils_base import PreTrainedTokenizerBase
 except ImportError:
     raise ImportError('transformers is not installed. Please install it with "pip install transformers[torch]"')
 
