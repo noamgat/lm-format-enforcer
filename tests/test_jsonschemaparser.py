@@ -827,6 +827,117 @@ def test_chinese_oneof_schema():
     correct_output = """[{"trigger": "IPO", "event_type": "公司上市", "arguments": [{"role": "上市公司", "argument": "理想汽车"}, {"role": "披露时间", "argument": "30日"}, {"role": "发行价格", "argument": "8-10美元"}, {"role": "环节", "argument": "筹备上市"}]}]"""
     _test_json_schema_parsing_with_string(correct_output, test_schema, True)
 
+
+@pytest.mark.parametrize(
+    "test_input, expected_success",
+    [
+        ("5", True),
+        ('"value"', True),
+        ("{}", False),
+        ('{"junk": 1}', False),
+    ],
+)
+def test_oneof_with_scalar_options(test_input, expected_success):
+    schema = {
+        "oneOf": [
+            {"type": "integer"},
+            {"type": "string"},
+        ]
+    }
+    _test_json_schema_parsing_with_string(test_input, schema, expected_success)
+
+
+@pytest.mark.parametrize(
+    "test_input, expected_success",
+    [
+        ('{"kind": "cat", "meow": 1}', True),
+        ('{"kind": "dog", "bark": 1}', True),
+        ("{}", False),
+        ('{"kind": "cat", "bark": 1}', False),
+        ('{"junk": 1}', False),
+    ],
+)
+@pytest.mark.parametrize(
+    "definitions_key, ref_prefix",
+    [
+        ("$defs", "#/$defs"),
+        ("definitions", "#/definitions"),
+    ],
+)
+def test_oneof_with_ref_options(
+    test_input, expected_success, definitions_key, ref_prefix
+):
+    schema = {
+        definitions_key: {
+            "Cat": {
+                "type": "object",
+                "properties": {
+                    "kind": {"const": "cat"},
+                    "meow": {"type": "integer"},
+                },
+                "required": ["kind", "meow"],
+            },
+            "Dog": {
+                "type": "object",
+                "properties": {
+                    "kind": {"const": "dog"},
+                    "bark": {"type": "integer"},
+                },
+                "required": ["kind", "bark"],
+            },
+        },
+        "oneOf": [
+            {"$ref": f"{ref_prefix}/Cat"},
+            {"$ref": f"{ref_prefix}/Dog"},
+        ],
+    }
+    _test_json_schema_parsing_with_string(test_input, schema, expected_success)
+
+
+@pytest.mark.parametrize(
+    "ref_prefix, valid_input, invalid_input",
+    [
+        ("#/$defs", "5", '"value"'),
+        ("#/definitions", '"value"', "5"),
+    ],
+)
+def test_oneof_ref_uses_the_named_definitions_section(
+    ref_prefix, valid_input, invalid_input
+):
+    schema = {
+        "$defs": {"Value": {"type": "integer"}},
+        "definitions": {"Value": {"type": "string"}},
+        "oneOf": [{"$ref": f"{ref_prefix}/Value"}],
+    }
+    _test_json_schema_parsing_with_string(valid_input, schema, True)
+    _test_json_schema_parsing_with_string(invalid_input, schema, False)
+
+
+@pytest.mark.parametrize(
+    "test_input, expected_success",
+    [
+        ('{"source": "registry", "value": 1}', True),
+        ('{"value": 1}', False),
+        ('{"source": "other", "value": 1}', False),
+    ],
+)
+def test_oneof_with_ref_options_merges_parent_schema(test_input, expected_success):
+    schema = {
+        "$defs": {
+            "Result": {
+                "type": "object",
+                "properties": {"value": {"type": "integer"}},
+                "required": ["value"],
+            },
+        },
+        "type": "object",
+        "properties": {"source": {"const": "registry"}},
+        "required": ["source"],
+        "oneOf": [{"$ref": "#/$defs/Result"}],
+    }
+    _test_json_schema_parsing_with_string(test_input, schema, expected_success)
+
+
 def test_additional_properties():
     schema = {'type': 'object', 'properties': {'snippets': {'title': 'snippets', 'type': 'string'}, 'overall_sentiment': {'title': 'overall_sentiment', 'type': 'string'}}, 'required': ['snippets', 'overall_sentiment'], 'additionalProperties': False, 'definitions': {}} 
     completion = """{"snippets": "What a beautiful day", "overall_sentiment": "Positive"}"""
@@ -864,4 +975,3 @@ def test_additional_properties_schema_object():
     }
     _test_json_schema_parsing_with_string('{"a": 1, "b": 2}', schema, True)
     _test_json_schema_parsing_with_string('{"a": "string_value"}', schema, False)
-
