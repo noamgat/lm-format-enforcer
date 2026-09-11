@@ -488,7 +488,11 @@ class NumberParsingState(PrimitiveParsingState):
             allowed_characters = "." + WHITESPACE_CHARACTERS
         if self.parsed_string and self.parsed_string[-1] in "eE":
             allowed_characters += "-+"
-        if self.seen_digit and not self.seen_exponent:
+        if (
+            self.seen_digit
+            and not self.seen_exponent
+            and self.parsed_string[-1].isdigit()
+        ):
             allowed_characters += "eE"
         if self.allow_floating_point and not self.seen_decimal_point and self.seen_digit and not self.seen_exponent:
             allowed_characters += "."
