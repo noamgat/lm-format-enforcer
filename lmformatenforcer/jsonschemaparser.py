@@ -660,6 +660,8 @@ class ListParsingState(PrimitiveParsingState):
         self = cast(ListParsingState, super().add_character(new_character))
         if new_character == "[":
             self.seen_list_opener = True
+            if self.max_items == 0:
+                return self
             item_parser = get_parser(self.root, self.list_member_type)
             requires_items = self.min_items is not None and self.min_items > 0
             if requires_items:
