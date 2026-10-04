@@ -154,6 +154,9 @@ class TokenEnforcer:
             max_allowed_len = min(cache.max_token_len, max_len - cur_len)  # max new characters allowed (before ")
 
             allowed_tokens.extend(cache.lookup_allowed_tokens(min_remaining, max_allowed_len).allowed_tokens)
+            complex_tree = self.tokenizer_tree.json_freetext_complex_tokens
+            if complex_tree.children:
+                self._collect_allowed_tokens(parser, complex_tree, allowed_tokens, None)
             characters_to_explore = characters_to_explore.intersection(['"'])
 
         for character in characters_to_explore:
@@ -181,4 +184,3 @@ class TokenEnforcer:
                 new_state.parser = ForceStopParser()
         return new_state
         
-
