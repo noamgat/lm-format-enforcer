@@ -6,12 +6,19 @@ from typing import Dict, Hashable, List, Optional, Union, cast
 
 from .external.jsonschemaobject import JsonSchemaObject, json_schema_data_formats
 from .exceptions import LMFormatEnforcerException
-from .characterlevelparser import CharacterLevelParser, CharacterLevelParserConfig, ForceStopParser, SequenceParser, StringParser, UnionParser
+from .characterlevelparser import (
+    CharacterLevelParser,
+    CharacterLevelParserConfig,
+    ForceStopParser,
+    StringParser,
+    UnionParser,
+)
 from .consts import BACKSLASH, BACKSLASH_ESCAPING_CHARACTERS, WHITESPACE_CHARACTERS
 from .regexparser import RegexParser
 
 # No need to include the 'integer' option in the anyOf, as it is a subset of 'number'
 _ANY_JSON_SCHEMA_DICT = {'anyOf': [{'type': type} for type in json_schema_data_formats.keys() if type != 'integer']}
+_JSON_STRING_CONTROL_CHARACTERS: Dict[int, None] = dict.fromkeys(range(0x20))
 
 class JsonSchemaParser(CharacterLevelParser):
     ANY_JSON_OBJECT_SCHEMA: JsonSchemaObject = JsonSchemaObject(**_ANY_JSON_SCHEMA_DICT)
@@ -44,7 +51,9 @@ class JsonSchemaParser(CharacterLevelParser):
             json_schema = json_schema or _ANY_JSON_SCHEMA_DICT
             self.context.model_class = JsonSchemaObject(**json_schema)
             self.context.active_parser = self
-            self.context.alphabet_without_quotes = self.config.alphabet.replace('"', '')
+            self.context.alphabet_without_quotes = self.config.alphabet.translate(
+                _JSON_STRING_CONTROL_CHARACTERS
+            ).replace('"', '')
         
         self.num_consecutive_whitespaces = num_consecutive_whitespaces
         if existing_stack is None:
@@ -141,13 +150,23 @@ class JsonSchemaParser(CharacterLevelParser):
         if self.object_stack:
             current_parser = self.object_stack[-1]
             if isinstance(current_parser, StringParsingState):
-                if not current_parser.allowed_strings and current_parser.seen_opening_quote and not current_parser.seen_closing_quote and not current_parser.regex_parser:
+                if (
+                    not current_parser.allowed_strings
+                    and current_parser.seen_opening_quote
+                    and not current_parser.seen_closing_quote
+                    and not current_parser.regex_parser
+                    and current_parser.escape_sequence is None
+                ):
                     # Performance optimization: When we are parsing a string that is not from a list of allowed strings, most tokens
                     # are legal. The exploration can be more costly than the LM itself for large tokenizers (because this is pure python),
                     # so we signal that we are in a "freetext" mode, and reuse the allowed token list throughout the run.
-                    cur_len = len(current_parser.parsed_string)
+                    cur_len = current_parser.decoded_length
                     min_len = current_parser.min_length or 0
-                    max_len = current_parser.max_length or sys.maxsize
+                    max_len = (
+                        current_parser.max_length
+                        if current_parser.max_length is not None
+                        else sys.maxsize
+                    )
                     assert min_len <= max_len, "Invalid schema for str: min length is larger than max length"
                     if cur_len < max_len:
                         return ('json_freetext', cur_len, min_len, max_len)
@@ -532,6 +551,10 @@ class StringParsingState(PrimitiveParsingState):
         self.min_length = min_length
         self.max_length = max_length
         self.pattern = pattern
+        self.escape_sequence: Optional[str] = None
+        self.escape_only_low_surrogate = False
+        self.pending_high_surrogate = False
+        self.num_surrogate_pairs = 0
         if self.pattern and (self.min_length or self.max_length):
             raise LMFormatEnforcerException("String schema contains both a pattern and a min/max length, which is not currently supported")
         # We implicitly force the string to match the entire regex, so leading ^ and trailing $ are reduntant.
@@ -547,24 +570,40 @@ class StringParsingState(PrimitiveParsingState):
 
 
     def _clone(self) -> "StringParsingState":
-        clone = StringParsingState(
-            self.root,
-            self.allowed_strings,
-            self.require_opening_quote,
-            self.require_closing_quote,
-            self.min_length,
-            self.max_length,
-            self.pattern,
-            self.regex_parser
-        )
-        clone.parsed_string = self.parsed_string
-        clone.seen_closing_quote = self.seen_closing_quote
-        clone.seen_opening_quote = self.seen_opening_quote
+        clone = StringParsingState.__new__(StringParsingState)
+        clone.__dict__ = self.__dict__.copy()
         return clone
 
+    @property
+    def decoded_length(self) -> int:
+        # Each escape reserves one character; a UTF16 surrogate pair represents one.
+        return len(self.parsed_string) - self.num_surrogate_pairs
+
     def add_character(self, new_character: str):
-        if (not self.parsed_string or self.seen_closing_quote) and new_character in WHITESPACE_CHARACTERS:
+        escape_sequence = self.escape_sequence
+        if escape_sequence is not None:
+            self = self._clone()
+            self.escape_sequence = escape_sequence + new_character
+            if self.escape_sequence[0] != 'u' or len(self.escape_sequence) == 5:
+                code_unit = (
+                    int(self.escape_sequence[1:], 16)
+                    if self.escape_sequence[0] == 'u'
+                    else 0
+                )
+                if self.pending_high_surrogate and 0xDC00 <= code_unit <= 0xDFFF:
+                    self.num_surrogate_pairs += 1
+                self.pending_high_surrogate = 0xD800 <= code_unit <= 0xDBFF
+                self.escape_sequence = None
             return self
+        if (
+            not self.seen_opening_quote
+            or self.seen_closing_quote
+            or (not self.require_opening_quote and not self.parsed_string)
+        ) and new_character in WHITESPACE_CHARACTERS:
+            return self
+        at_max_length = (
+            self.max_length is not None and self.decoded_length >= self.max_length
+        )
         self = cast(StringParsingState, super().add_character(new_character))
         if new_character == '"':
             if not self.seen_opening_quote:
@@ -576,16 +615,26 @@ class StringParsingState(PrimitiveParsingState):
         if self.regex_parser and new_character != '"' and self.seen_opening_quote and not self.seen_closing_quote:
             self.regex_parser = self.regex_parser.add_character(new_character)
         if new_character == BACKSLASH:
-            # After a backslack we immediately have the escaping character, and if its 'u', we have 4 hex digits
-            escaping_character_parsers: List[CharacterLevelParser] = [StringParser(c) for c in BACKSLASH_ESCAPING_CHARACTERS]
-            hex_digit_parser: CharacterLevelParser = UnionParser([StringParser(c) for c in "0123456789abcdefABCDEF"])
-            unicode_components: List[CharacterLevelParser] = list([StringParser("u")] + [hex_digit_parser] * 4)
-            unicode_escape_parser: CharacterLevelParser = SequenceParser(unicode_components)
-            json_escaping_parser = UnionParser(escaping_character_parsers + [unicode_escape_parser])
-            self.root.context.active_parser.object_stack.append(json_escaping_parser)
+            self.escape_sequence = ''
+            self.escape_only_low_surrogate = at_max_length and self.pending_high_surrogate
+        else:
+            self.pending_high_surrogate = False
         return self
 
     def get_allowed_characters(self) -> str:
+        if self.escape_sequence is not None:
+            if not self.escape_sequence:
+                return (
+                    'u'
+                    if self.escape_only_low_surrogate
+                    else BACKSLASH_ESCAPING_CHARACTERS + 'u'
+                )
+            if self.escape_only_low_surrogate:
+                if len(self.escape_sequence) == 1:
+                    return 'dD'
+                if len(self.escape_sequence) == 2:
+                    return 'cdefCDEF'
+            return '0123456789abcdefABCDEF'
         if not self.seen_opening_quote:
             return '"' + WHITESPACE_CHARACTERS
         if self.seen_closing_quote:
@@ -611,11 +660,14 @@ class StringParsingState(PrimitiveParsingState):
                 allowed_next_characters.extend(WHITESPACE_CHARACTERS)
             return "".join(allowed_next_characters)
         else:
-            if self.min_length is not None and len(self.parsed_string) < self.min_length:
+            if self.min_length is not None and self.decoded_length < self.min_length:
                 return self.root.context.alphabet_without_quotes + BACKSLASH
-            if self.max_length is not None and len(self.parsed_string) >= self.max_length:
-                return '"'
-            return self.root.config.alphabet + BACKSLASH
+            if self.max_length is not None and self.decoded_length >= self.max_length:
+                return '"' + (BACKSLASH if self.pending_high_surrogate else '')
+            return (
+                self.root.config.alphabet.translate(_JSON_STRING_CONTROL_CHARACTERS)
+                + BACKSLASH
+            )
 
     def can_end(self) -> bool:
         if self.require_closing_quote:
