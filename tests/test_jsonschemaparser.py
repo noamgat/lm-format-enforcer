@@ -639,6 +639,35 @@ def test_arrays_with_multiple_enums():
     _test_json_schema_parsing_with_string('{"array_of_numbers":[6]}', schema, False)
     _test_json_schema_parsing_with_string('{"array_of_numbers":[1, 6]}', schema, False)
 
+
+def test_array_max_items_zero_and_positive_limits():
+    zero_max_schema = {
+        "type": "array",
+        "items": {"type": "integer"},
+        "maxItems": 0,
+    }
+    _test_json_schema_parsing_with_string("[]", zero_max_schema, True)
+    _test_json_schema_parsing_with_string("[ ]", zero_max_schema, True)
+    _test_json_schema_parsing_with_string("[1]", zero_max_schema, False)
+
+    one_max_schema = {
+        "type": "array",
+        "items": {"type": "integer"},
+        "maxItems": 1,
+    }
+    _test_json_schema_parsing_with_string("[]", one_max_schema, True)
+    _test_json_schema_parsing_with_string("[1]", one_max_schema, True)
+    _test_json_schema_parsing_with_string("[1, 2]", one_max_schema, False)
+
+    two_max_schema = {
+        "type": "array",
+        "items": {"type": "integer"},
+        "maxItems": 2,
+    }
+    _test_json_schema_parsing_with_string("[1, 2]", two_max_schema, True)
+    _test_json_schema_parsing_with_string("[1, 2, 3]", two_max_schema, False)
+
+
 @contextmanager
 def _temp_replace_env_var(env_var_name, temp_value):
     try:
