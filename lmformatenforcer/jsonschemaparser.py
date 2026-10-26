@@ -1,5 +1,6 @@
 from copy import deepcopy
 import enum
+import json
 import sys
 from typing import Dict, Hashable, List, Optional, Union, cast
 
@@ -189,6 +190,8 @@ def get_parser(
     if value_schema.extras and 'const' in value_schema.extras:
         allowed_value = value_schema.extras['const']
         is_string = type(allowed_value) == str
+        if allowed_value is None or isinstance(allowed_value, (bool, int, float)):
+            allowed_value = json.dumps(allowed_value)
         return StringParsingState(parsing_state, 
                                   [allowed_value], 
                                   require_opening_quote=is_string, 
@@ -235,7 +238,7 @@ def get_parser(
         elif is_numeric:
             return StringParsingState(
                 parsing_state,
-                [str(i) for i in value_schema.enum],
+                [json.dumps(i) for i in value_schema.enum],
                 require_opening_quote=False,
                 require_closing_quote=False,
             )
