@@ -1,6 +1,8 @@
 from copy import deepcopy
 import enum
+import math
 import sys
+from fractions import Fraction
 from typing import Dict, Hashable, List, Optional, Union, cast
 
 
@@ -242,7 +244,15 @@ def get_parser(
         else:
             raise Exception("Unsupported enum type " + str(value_schema.enum))
     elif value_schema.type == "integer":
-        return NumberParsingState(parsing_state, False)
+        return NumberParsingState(
+            parsing_state,
+            False,
+            minimum=value_schema.minimum,
+            maximum=value_schema.maximum,
+            exclusive_minimum=value_schema.exclusiveMinimum,
+            exclusive_maximum=value_schema.exclusiveMaximum,
+            multiple_of=value_schema.multipleOf,
+        )
     elif value_schema.type == "boolean":
         return StringParsingState(
             parsing_state,
@@ -258,7 +268,15 @@ def get_parser(
             require_closing_quote=False,
         )
     elif value_schema.type == "number":
-        return NumberParsingState(parsing_state, True)
+        return NumberParsingState(
+            parsing_state,
+            True,
+            minimum=value_schema.minimum,
+            maximum=value_schema.maximum,
+            exclusive_minimum=value_schema.exclusiveMinimum,
+            exclusive_maximum=value_schema.exclusiveMaximum,
+            multiple_of=value_schema.multipleOf,
+        )
     elif value_schema.type == "array":
         item_schema = value_schema.items or JsonSchemaParser.ANY_JSON_OBJECT_SCHEMA
         return ListParsingState(parsing_state, item_schema, value_schema.minItems, value_schema.maxItems)
@@ -432,11 +450,132 @@ class PrimitiveParsingState(BaseParsingState):
         return True
 
 
+def _schema_number_to_fraction(value) -> Optional[Fraction]:
+    """Convert a numeric JSON schema keyword value to an exact Fraction.
+
+    Floats are converted through their decimal string representation, so a
+    bound written as 1.1 in the schema means exactly 11/10, the same value
+    that the parsed JSON number text is compared against.
+    """
+    if value is None or isinstance(value, bool):
+        return None
+    value = getattr(value, "value", value)  # Unwrap UnionIntFloat
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return Fraction(value)
+    if isinstance(value, float):
+        return Fraction(str(value))
+    if isinstance(value, Fraction):
+        return value
+    try:
+        return Fraction(str(value))
+    except (ValueError, ZeroDivisionError):
+        return None
+
+
+def _decade_floor(value: Fraction) -> int:
+    """Return the largest integer k such that 10**k <= value. `value` must be positive."""
+    decade = len(str(value.numerator)) - len(str(value.denominator))
+    while Fraction(10) ** (decade + 1) <= value:
+        decade += 1
+    while Fraction(10) ** decade > value:
+        decade -= 1
+    return decade
+
+
+def _factor_exponent(value: int, prime: int) -> int:
+    """Return how many times `prime` divides `value`. `value` must be non-negative."""
+    exponent = 0
+    while value > 1 and value % prime == 0:
+        value //= prime
+        exponent += 1
+    return exponent
+
+
+def _interval_contains_multiple(
+    low: Fraction,
+    low_inclusive: bool,
+    high: Optional[Fraction],
+    high_inclusive: bool,
+    multiple: Fraction,
+) -> bool:
+    """Check whether the interval contains a non-negative integer multiple of `multiple`."""
+    if low_inclusive:
+        multiplier = math.ceil(low / multiple)
+    else:
+        multiplier = math.floor(low / multiple) + 1
+    if multiplier < 0:
+        multiplier = 0
+    candidate = multiplier * multiple
+    if candidate < low or (candidate == low and not low_inclusive):
+        candidate += multiple
+    if high is None:
+        return True
+    return candidate < high or (candidate == high and high_inclusive)
+
+
+def _interval_may_contain_value(
+    low: Fraction,
+    low_inclusive: bool,
+    high: Optional[Fraction],
+    high_inclusive: bool,
+    multiple_of: Optional[Fraction],
+) -> bool:
+    """Check whether an interval of reachable values may contain an acceptable value.
+
+    Reachable values are dense in such an interval (appending digits reaches
+    arbitrarily fine grids), so without a multipleOf constraint any interval
+    with positive length works, and a single point works when both ends
+    include it.
+    """
+    if multiple_of is not None:
+        return _interval_contains_multiple(low, low_inclusive, high, high_inclusive, multiple_of)
+    if high is None or low < high:
+        return True
+    return low == high and low_inclusive and high_inclusive
+
+
+def _intersect_band_with_range(
+    band_low: Fraction,
+    band_high: Fraction,
+    low: Fraction,
+    low_inclusive: bool,
+    high: Optional[Fraction],
+    high_inclusive: bool,
+):
+    """Intersect the half-open reachable band [band_low, band_high) with the constraint range."""
+    if low >= band_low:
+        intersection_low, intersection_low_inclusive = low, low_inclusive
+    else:
+        intersection_low, intersection_low_inclusive = band_low, True
+    if high is None or band_high <= high:
+        intersection_high, intersection_high_inclusive = band_high, False
+    else:
+        intersection_high, intersection_high_inclusive = high, high_inclusive
+    return intersection_low, intersection_low_inclusive, intersection_high, intersection_high_inclusive
+
+
+def _exponent_value_reaches(mantissa: Fraction, exponent: int, low: Fraction, low_inclusive: bool) -> bool:
+    value = mantissa * Fraction(10) ** exponent
+    return value > low or (value == low and low_inclusive)
+
+
+def _exponent_value_within(mantissa: Fraction, exponent: int, high: Fraction, high_inclusive: bool) -> bool:
+    value = mantissa * Fraction(10) ** exponent
+    return value < high or (value == high and high_inclusive)
+
+
 class NumberParsingState(PrimitiveParsingState):
     def __init__(
         self,
         root: JsonSchemaParser,
         allow_floating_point: bool,
+        minimum=None,
+        maximum=None,
+        exclusive_minimum=None,
+        exclusive_maximum=None,
+        multiple_of=None,
     ):
         super().__init__(root)
         self.allow_floating_point = allow_floating_point
@@ -444,9 +583,57 @@ class NumberParsingState(PrimitiveParsingState):
         self.seen_whitespace_after_digits = False
         self.seen_exponent = False
         self.seen_digit = False
+        # The numeric constraint keywords of the schema (minimum, maximum,
+        # exclusiveMinimum, exclusiveMaximum, multipleOf), held as exact
+        # fractions. Schemas without them keep the unconstrained behavior.
+        self.minimum = _schema_number_to_fraction(minimum)
+        self.maximum = _schema_number_to_fraction(maximum)
+        self.exclusive_minimum = _schema_number_to_fraction(exclusive_minimum)
+        self.exclusive_maximum = _schema_number_to_fraction(exclusive_maximum)
+        self.multiple_of = _schema_number_to_fraction(multiple_of)
+        if self.multiple_of is not None and self.multiple_of <= 0:
+            # multipleOf must be positive in a valid schema; ignore invalid values
+            self.multiple_of = None
+        self.has_numeric_constraints = any(
+            constraint is not None
+            for constraint in (
+                self.minimum,
+                self.maximum,
+                self.exclusive_minimum,
+                self.exclusive_maximum,
+                self.multiple_of,
+            )
+        )
+        self._lower_bound, self._lower_bound_inclusive = self._combine_bounds(
+            self.minimum, self.exclusive_minimum, take_maximum=True
+        )
+        self._upper_bound, self._upper_bound_inclusive = self._combine_bounds(
+            self.maximum, self.exclusive_maximum, take_maximum=False
+        )
+
+    @staticmethod
+    def _combine_bounds(inclusive_bound, exclusive_bound, take_maximum: bool):
+        """Combine an inclusive and an exclusive bound into a single effective bound."""
+        if inclusive_bound is None:
+            return exclusive_bound, False
+        if exclusive_bound is None:
+            return inclusive_bound, True
+        if inclusive_bound == exclusive_bound:
+            return inclusive_bound, False
+        if (exclusive_bound > inclusive_bound) == take_maximum:
+            return exclusive_bound, False
+        return inclusive_bound, True
 
     def _clone(self) -> "NumberParsingState":
-        clone = NumberParsingState(self.root, self.allow_floating_point)
+        clone = NumberParsingState(
+            self.root,
+            self.allow_floating_point,
+            minimum=self.minimum,
+            maximum=self.maximum,
+            exclusive_minimum=self.exclusive_minimum,
+            exclusive_maximum=self.exclusive_maximum,
+            multiple_of=self.multiple_of,
+        )
         clone.parsed_string = self.parsed_string
         clone.seen_decimal_point = self.seen_decimal_point
         clone.seen_whitespace_after_digits = self.seen_whitespace_after_digits
@@ -494,12 +681,285 @@ class NumberParsingState(PrimitiveParsingState):
             allowed_characters += "."
         if self.parsed_string and self.parsed_string[-1].isdigit():
             allowed_characters += WHITESPACE_CHARACTERS
+        if self.has_numeric_constraints:
+            allowed_characters = self._filter_allowed_characters(allowed_characters)
         return allowed_characters
 
     def can_end(self) -> bool:
         if self.seen_exponent and self.parsed_string[-1] in "eE+-":
             return False
-        return bool(self.parsed_string) and (self.parsed_string[-1].isdigit() or self.seen_whitespace_after_digits)
+        if not (bool(self.parsed_string) and (self.parsed_string[-1].isdigit() or self.seen_whitespace_after_digits)):
+            return False
+        if not self.has_numeric_constraints:
+            return True
+        value = self._parsed_value()
+        return value is not None and self._value_satisfies_constraints(value)
+
+    def _parsed_value(self) -> Optional[Fraction]:
+        """The exact value of the number parsed so far, or None if it is not complete."""
+        text = self.parsed_string.strip()
+        if not text or text == "-":
+            return None
+        try:
+            return Fraction(text)
+        except (ValueError, ZeroDivisionError):
+            return None
+
+    def _value_satisfies_constraints(self, value: Fraction) -> bool:
+        if self._lower_bound is not None:
+            if value < self._lower_bound or (value == self._lower_bound and not self._lower_bound_inclusive):
+                return False
+        if self._upper_bound is not None:
+            if value > self._upper_bound or (value == self._upper_bound and not self._upper_bound_inclusive):
+                return False
+        if self.multiple_of is not None and (value / self.multiple_of).denominator != 1:
+            return False
+        return True
+
+    def _filter_allowed_characters(self, allowed_characters: str) -> str:
+        filtered_characters = ""
+        for character in allowed_characters:
+            if character in filtered_characters:
+                continue
+            if character in WHITESPACE_CHARACTERS:
+                # Whitespace terminates the number, so it is only offered when the
+                # value parsed so far already satisfies the constraints. Whitespace
+                # before the first character terminates nothing and stays allowed.
+                if not self.parsed_string:
+                    filtered_characters += character
+                else:
+                    value = self._parsed_value()
+                    if value is not None and self._value_satisfies_constraints(value):
+                        filtered_characters += character
+            elif self._prefix_is_feasible(self.parsed_string + character):
+                filtered_characters += character
+        return filtered_characters
+
+    def _magnitude_range(self, negative: bool):
+        """The range the absolute value must lie in, or None if it is empty.
+
+        Returns (low, low_inclusive, high, high_inclusive) with high None when
+        the range is unbounded above.
+        """
+        if negative:
+            low = -self._upper_bound if self._upper_bound is not None else None
+            low_inclusive = self._upper_bound_inclusive
+            high = -self._lower_bound if self._lower_bound is not None else None
+            high_inclusive = self._lower_bound_inclusive
+        else:
+            low, low_inclusive = self._lower_bound, self._lower_bound_inclusive
+            high, high_inclusive = self._upper_bound, self._upper_bound_inclusive
+        if low is None or low < 0:
+            low, low_inclusive = Fraction(0), True
+        if high is not None and high < 0:
+            return None
+        if high is not None and (low > high or (low == high and not (low_inclusive and high_inclusive))):
+            return None
+        return low, low_inclusive, high, high_inclusive
+
+    def _any_value_is_feasible(self, negative: bool) -> bool:
+        magnitude_range = self._magnitude_range(negative)
+        if magnitude_range is None:
+            return False
+        low, low_inclusive, high, high_inclusive = magnitude_range
+        return _interval_may_contain_value(low, low_inclusive, high, high_inclusive, self.multiple_of)
+
+    def _zero_prefix_is_feasible(self, negative: bool) -> bool:
+        if not self.allow_floating_point:
+            # An integer starting with 0 can only ever be 0: it cannot gain
+            # digits or a fraction part, and 0 times any exponent stays 0.
+            return self._value_satisfies_constraints(Fraction(0))
+        magnitude_range = self._magnitude_range(negative)
+        if magnitude_range is None:
+            return False
+        # A float starting with 0 reaches every non-negative value through
+        # fraction digits and an exponent (for example, 0.5e1 is 5), so the
+        # constraint range itself decides feasibility.
+        low, low_inclusive, high, high_inclusive = magnitude_range
+        return _interval_may_contain_value(low, low_inclusive, high, high_inclusive, self.multiple_of)
+
+    def _fraction_prefix_is_feasible(self, negative: bool, interval_low: Fraction, interval_high: Fraction) -> bool:
+        magnitude_range = self._magnitude_range(negative)
+        if magnitude_range is None:
+            return False
+        if interval_low == 0:
+            # The mantissa interval is [0, c), and scaled by exponents it
+            # covers every non-negative value, so the range itself decides.
+            low, low_inclusive, high, high_inclusive = magnitude_range
+            return _interval_may_contain_value(low, low_inclusive, high, high_inclusive, self.multiple_of)
+        return self._scaled_bands_are_feasible(magnitude_range, interval_low, interval_high)
+
+    def _scaled_bands_are_feasible(self, magnitude_range, unit_low: Fraction, unit_high: Fraction) -> bool:
+        """Check bands [unit_low * 10**k, unit_high * 10**k) for every integer k.
+
+        Digit prefixes reach the bands [G * 10**k, (G + 1) * 10**k) (appending
+        digits, a fraction part, or an exponent), and fraction prefixes reach
+        their mantissa interval scaled by any power of ten.
+        """
+        low, low_inclusive, high, high_inclusive = magnitude_range
+        if high is not None and high == 0:
+            # Only the value 0 could satisfy the range, and a positive unit
+            # interval scaled by powers of ten never reaches it.
+            return False
+        if self.multiple_of is None and low == 0:
+            # The bands exist at every scale, so one of them overlaps the
+            # range with positive length.
+            return True
+        # Start from the first band whose high end can exceed the lowest
+        # value we could accept (or the smallest positive multiple, when the
+        # range starts at 0 and only multiples are acceptable).
+        threshold = low if low > 0 else self.multiple_of
+        decade = _decade_floor(threshold / unit_high) + 1
+        while True:
+            band_low = unit_low * Fraction(10) ** decade
+            band_high = unit_high * Fraction(10) ** decade
+            if high is not None and band_low > high:
+                return False
+            intersection = _intersect_band_with_range(
+                band_low, band_high, low, low_inclusive, high, high_inclusive
+            )
+            if _interval_may_contain_value(*intersection, self.multiple_of):
+                return True
+            decade += 1
+
+    def _minimum_exponent_for_multiple(self, mantissa: Fraction) -> Optional[int]:
+        """Smallest exponent from which mantissa * 10**exponent stays a multiple.
+
+        mantissa * 10**E is a multiple of m exactly when (mantissa / m) *
+        10**E is an integer. Writing mantissa / m as n / d in lowest terms,
+        this holds precisely for E above some minimum, or for no E at all
+        when d has prime factors other than 2 and 5, which no power of ten
+        can cancel.
+        """
+        ratio = mantissa / self.multiple_of
+        numerator, denominator = ratio.numerator, ratio.denominator
+        if denominator == 1:
+            # Every non-negative exponent works; negative ones work while
+            # 10**|E| still divides the numerator.
+            return -min(_factor_exponent(numerator, 2), _factor_exponent(numerator, 5))
+        rest = denominator
+        twos = _factor_exponent(rest, 2)
+        rest //= 2 ** twos
+        fives = _factor_exponent(rest, 5)
+        rest //= 5 ** fives
+        if rest != 1:
+            return None
+        return max(twos, fives)
+
+    def _exponent_prefix_is_feasible(
+        self,
+        negative: bool,
+        mantissa: Fraction,
+        exponent_negative: bool,
+        exponent_sign_typed: bool,
+        exponent_digits: str,
+    ) -> bool:
+        if mantissa == 0:
+            # Zero times any exponent is still zero
+            return self._value_satisfies_constraints(Fraction(0))
+        magnitude_range = self._magnitude_range(negative)
+        if magnitude_range is None:
+            return False
+        low, low_inclusive, high, high_inclusive = magnitude_range
+
+        # The bounds translate into a range of usable exponents, because the
+        # value is mantissa * 10**exponent with a fixed positive mantissa.
+        exponent_low = None
+        if low > 0:
+            exponent_low = _decade_floor(low / mantissa)
+            while not _exponent_value_reaches(mantissa, exponent_low, low, low_inclusive):
+                exponent_low += 1
+            while _exponent_value_reaches(mantissa, exponent_low - 1, low, low_inclusive):
+                exponent_low -= 1
+        exponent_high = None
+        if high is not None:
+            if high == 0:
+                return False
+            exponent_high = _decade_floor(high / mantissa)
+            while not _exponent_value_within(mantissa, exponent_high, high, high_inclusive):
+                exponent_high -= 1
+            while _exponent_value_within(mantissa, exponent_high + 1, high, high_inclusive):
+                exponent_high += 1
+        if self.multiple_of is not None:
+            minimum_exponent = self._minimum_exponent_for_multiple(mantissa)
+            if minimum_exponent is None:
+                return False
+            exponent_low = minimum_exponent if exponent_low is None else max(exponent_low, minimum_exponent)
+        if exponent_low is not None and exponent_high is not None and exponent_low > exponent_high:
+            return False
+
+        if not exponent_digits:
+            if not exponent_sign_typed:
+                return True  # Every exponent is still reachable
+            if exponent_negative:
+                return exponent_low is None or exponent_low <= 0
+            return exponent_high is None or exponent_high >= 0
+
+        # With exponent digits typed, the reachable magnitudes are the typed
+        # value itself, plus the bands formed by appending more digits.
+        typed_value = int(exponent_digits)
+        if typed_value == 0:
+            return True  # Leading zeros keep every magnitude reachable
+        if exponent_negative:
+            magnitude_low = -exponent_high if exponent_high is not None else 0
+            magnitude_high = -exponent_low if exponent_low is not None else None
+        else:
+            magnitude_low = exponent_low if exponent_low is not None else 0
+            magnitude_high = exponent_high
+        if magnitude_low < 0:
+            magnitude_low = 0
+        if magnitude_high is not None and magnitude_high < magnitude_low:
+            return False
+        band_low = band_high = typed_value
+        while True:
+            if magnitude_high is not None and band_low > magnitude_high:
+                return False
+            if band_high >= magnitude_low:
+                return True
+            band_low, band_high = band_low * 10, (band_high + 1) * 10 - 1
+
+    def _prefix_is_feasible(self, prefix: str) -> bool:
+        """Check whether at least one completion of `prefix` can satisfy all constraints.
+
+        `prefix` is a grammatically valid prefix of a JSON number (possibly
+        just a sign). The values it can still reach are computed exactly, per
+        syntax region, using Fraction arithmetic throughout.
+        """
+        negative = prefix.startswith("-")
+        body = prefix[1:] if negative else prefix
+        if "e" in body or "E" in body:
+            mantissa_text, _, exponent_text = body.replace("E", "e").partition("e")
+            int_digits, _, frac_digits = mantissa_text.partition(".")
+            mantissa = Fraction(int(int_digits)) if int_digits else Fraction(0)
+            if frac_digits:
+                mantissa += Fraction(int(frac_digits), 10 ** len(frac_digits))
+            exponent_sign = exponent_text[:1]
+            return self._exponent_prefix_is_feasible(
+                negative,
+                mantissa,
+                exponent_negative=exponent_sign == "-",
+                exponent_sign_typed=exponent_sign in ("+", "-"),
+                exponent_digits=exponent_text[1:] if exponent_sign in ("+", "-") else exponent_text,
+            )
+        if "." in body:
+            int_digits, _, frac_digits = body.partition(".")
+            scale = 10 ** len(frac_digits)
+            interval_low = Fraction(int(int_digits) if int_digits else 0)
+            if frac_digits:
+                interval_low += Fraction(int(frac_digits), scale)
+            return self._fraction_prefix_is_feasible(negative, interval_low, interval_low + Fraction(1, scale))
+        if not body:
+            # Only a sign so far (or nothing): the constraint set itself decides
+            if negative:
+                return self._any_value_is_feasible(True)
+            return self._any_value_is_feasible(False) or self._any_value_is_feasible(True)
+        int_value = int(body)
+        if int_value == 0:
+            return self._zero_prefix_is_feasible(negative)
+        magnitude_range = self._magnitude_range(negative)
+        if magnitude_range is None:
+            return False
+        return self._scaled_bands_are_feasible(magnitude_range, Fraction(int_value), Fraction(int_value + 1))
 
 
 class StringParsingState(PrimitiveParsingState):

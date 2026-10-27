@@ -822,6 +822,125 @@ def test_invalid_number_formats_with_leading_zeros(test_input):
 def test_number_edge_cases(test_input, expected_success):
     _test_json_schema_parsing_with_string(test_input, schema, expected_success)
 
+def test_numeric_minimum_maximum():
+    minimum_schema = {"type": "number", "minimum": 100}
+    _test_json_schema_parsing_with_string("100", minimum_schema, True)
+    _test_json_schema_parsing_with_string("150", minimum_schema, True)
+    _test_json_schema_parsing_with_string("100.5", minimum_schema, True)
+    _test_json_schema_parsing_with_string("1000", minimum_schema, True)
+    _test_json_schema_parsing_with_string("99", minimum_schema, False)
+    _test_json_schema_parsing_with_string("50", minimum_schema, False)
+    _test_json_schema_parsing_with_string("99.9", minimum_schema, False)
+    _test_json_schema_parsing_with_string("-100", minimum_schema, False)
+
+    maximum_schema = {"type": "number", "maximum": 10}
+    _test_json_schema_parsing_with_string("10", maximum_schema, True)
+    _test_json_schema_parsing_with_string("10.0", maximum_schema, True)
+    _test_json_schema_parsing_with_string("9", maximum_schema, True)
+    _test_json_schema_parsing_with_string("-100", maximum_schema, True)
+    _test_json_schema_parsing_with_string("15", maximum_schema, False)
+    _test_json_schema_parsing_with_string("10.5", maximum_schema, False)
+
+    range_schema = {"type": "number", "minimum": 5, "maximum": 10}
+    _test_json_schema_parsing_with_string("5", range_schema, True)
+    _test_json_schema_parsing_with_string("10", range_schema, True)
+    _test_json_schema_parsing_with_string("7.5", range_schema, True)
+    _test_json_schema_parsing_with_string("4", range_schema, False)
+    _test_json_schema_parsing_with_string("11", range_schema, False)
+
+    negative_range_schema = {"type": "number", "minimum": -10, "maximum": -5}
+    _test_json_schema_parsing_with_string("-10", negative_range_schema, True)
+    _test_json_schema_parsing_with_string("-5", negative_range_schema, True)
+    _test_json_schema_parsing_with_string("-7", negative_range_schema, True)
+    _test_json_schema_parsing_with_string("-4", negative_range_schema, False)
+    _test_json_schema_parsing_with_string("-11", negative_range_schema, False)
+    _test_json_schema_parsing_with_string("0", negative_range_schema, False)
+
+def test_numeric_exclusive_bounds():
+    exclusive_minimum_schema = {"type": "number", "exclusiveMinimum": 1.1}
+    _test_json_schema_parsing_with_string("1.2", exclusive_minimum_schema, True)
+    _test_json_schema_parsing_with_string("2", exclusive_minimum_schema, True)
+    _test_json_schema_parsing_with_string("1.1", exclusive_minimum_schema, False)
+    _test_json_schema_parsing_with_string("1", exclusive_minimum_schema, False)
+
+    exclusive_maximum_schema = {"type": "number", "exclusiveMaximum": 3.0}
+    _test_json_schema_parsing_with_string("2.9", exclusive_maximum_schema, True)
+    _test_json_schema_parsing_with_string("2", exclusive_maximum_schema, True)
+    _test_json_schema_parsing_with_string("3.0", exclusive_maximum_schema, False)
+    _test_json_schema_parsing_with_string("3", exclusive_maximum_schema, False)
+
+    exclusive_range_schema = {"type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 1}
+    _test_json_schema_parsing_with_string("0.5", exclusive_range_schema, True)
+    _test_json_schema_parsing_with_string("0", exclusive_range_schema, False)
+    _test_json_schema_parsing_with_string("1", exclusive_range_schema, False)
+
+def test_numeric_multiple_of():
+    multiple_schema = {"type": "number", "multipleOf": 5}
+    _test_json_schema_parsing_with_string("5", multiple_schema, True)
+    _test_json_schema_parsing_with_string("10", multiple_schema, True)
+    _test_json_schema_parsing_with_string("0", multiple_schema, True)
+    _test_json_schema_parsing_with_string("-15", multiple_schema, True)
+    _test_json_schema_parsing_with_string("7", multiple_schema, False)
+    _test_json_schema_parsing_with_string("3", multiple_schema, False)
+
+    fractional_multiple_schema = {"type": "number", "multipleOf": 0.25}
+    _test_json_schema_parsing_with_string("0.5", fractional_multiple_schema, True)
+    _test_json_schema_parsing_with_string("1.75", fractional_multiple_schema, True)
+    _test_json_schema_parsing_with_string("2", fractional_multiple_schema, True)
+    _test_json_schema_parsing_with_string("0.3", fractional_multiple_schema, False)
+
+    # 0.3 is exactly 3 * 0.1 in decimal arithmetic; binary floating point
+    # comparison (0.3 / 0.1 == 2.9999999999999996) must not reject it.
+    tenth_multiple_schema = {"type": "number", "multipleOf": 0.1}
+    _test_json_schema_parsing_with_string("0.3", tenth_multiple_schema, True)
+    _test_json_schema_parsing_with_string("0.35", tenth_multiple_schema, False)
+
+def test_numeric_constraints_combined_with_multiple_of():
+    combined_schema = {"type": "number", "minimum": 10, "maximum": 20, "multipleOf": 5}
+    _test_json_schema_parsing_with_string("10", combined_schema, True)
+    _test_json_schema_parsing_with_string("15", combined_schema, True)
+    _test_json_schema_parsing_with_string("20", combined_schema, True)
+    _test_json_schema_parsing_with_string("12", combined_schema, False)
+    _test_json_schema_parsing_with_string("5", combined_schema, False)
+    _test_json_schema_parsing_with_string("25", combined_schema, False)
+
+def test_numeric_constraints_integer_type():
+    integer_minimum_schema = {"type": "integer", "minimum": 100}
+    _test_json_schema_parsing_with_string("100", integer_minimum_schema, True)
+    _test_json_schema_parsing_with_string("150", integer_minimum_schema, True)
+    _test_json_schema_parsing_with_string("99", integer_minimum_schema, False)
+
+    integer_maximum_schema = {"type": "integer", "maximum": -5}
+    _test_json_schema_parsing_with_string("-5", integer_maximum_schema, True)
+    _test_json_schema_parsing_with_string("-10", integer_maximum_schema, True)
+    _test_json_schema_parsing_with_string("-4", integer_maximum_schema, False)
+    _test_json_schema_parsing_with_string("0", integer_maximum_schema, False)
+
+    integer_multiple_schema = {"type": "integer", "multipleOf": 5}
+    _test_json_schema_parsing_with_string("20", integer_multiple_schema, True)
+    _test_json_schema_parsing_with_string("22", integer_multiple_schema, False)
+
+def test_numeric_constraints_with_exponents():
+    maximum_schema = {"type": "number", "maximum": 10}
+    _test_json_schema_parsing_with_string("1e1", maximum_schema, True)
+    _test_json_schema_parsing_with_string("1e-1", maximum_schema, True)
+    _test_json_schema_parsing_with_string("1e2", maximum_schema, False)
+    _test_json_schema_parsing_with_string("2e1", maximum_schema, False)
+
+    minimum_schema = {"type": "number", "minimum": 100}
+    _test_json_schema_parsing_with_string("1e2", minimum_schema, True)
+    _test_json_schema_parsing_with_string("1.5e2", minimum_schema, True)
+    _test_json_schema_parsing_with_string("9e1", minimum_schema, False)
+
+def test_numeric_constraints_in_object_and_array():
+    object_schema = {"type": "object", "properties": {"num": {"type": "integer", "minimum": 10}}, "required": ["num"]}
+    _test_json_schema_parsing_with_string('{"num": 15}', object_schema, True)
+    _test_json_schema_parsing_with_string('{"num": 5}', object_schema, False)
+
+    array_schema = {"type": "array", "items": {"type": "number", "maximum": 5}}
+    _test_json_schema_parsing_with_string("[1, 2]", array_schema, True)
+    _test_json_schema_parsing_with_string("[1, 9]", array_schema, False)
+
 def test_chinese_oneof_schema():
     test_schema = { "$schema": "http://json-schema.org/draft-07/schema#", "type": "array", "items": { "oneOf": [ { "type": "object", "properties": { "trigger": { "type": "string" }, "event_type": { "enum": [ "公司上市" ] }, "arguments": { "type": "array", "items": { "type": "object", "properties": { "role": { "enum": [ "上市公司", "证券代码", "环节", "披露时间", "发行价格", "事件时间", "市值", "募资金额" ] }, "argument": { "type": "string" } }, "required": [ "role", "argument" ] } } }, "required": [ "trigger", "event_type", "arguments" ] }, { "type": "object", "properties": { "trigger": { "type": "string" }, "event_type": { "enum": [ "被约谈" ] }, "arguments": { "type": "array", "items": { "type": "object", "properties": { "role": { "enum": [ "公司名称", "披露时间", "被约谈时间", "约谈机构" ] }, "argument": { "type": "string" } }, "required": [ "role", "argument" ] } } }, "required": [ "trigger", "event_type", "arguments" ] } ] } }
     correct_output = """[{"trigger": "IPO", "event_type": "公司上市", "arguments": [{"role": "上市公司", "argument": "理想汽车"}, {"role": "披露时间", "argument": "30日"}, {"role": "发行价格", "argument": "8-10美元"}, {"role": "环节", "argument": "筹备上市"}]}]"""
