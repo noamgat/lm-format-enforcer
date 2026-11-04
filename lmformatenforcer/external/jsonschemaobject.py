@@ -205,6 +205,7 @@ class JsonSchemaObject(BaseModel):
         return value
 
     items: Union[List[JsonSchemaObject], JsonSchemaObject, bool, None] = None
+    prefixItems: Optional[List[JsonSchemaObject]] = None
     uniqueItems: Optional[bool] = None
     type: Union[str, List[str], None] = None
     format: Optional[str] = None
