@@ -261,7 +261,7 @@ def get_parser(
         return NumberParsingState(parsing_state, True)
     elif value_schema.type == "array":
         item_schema = value_schema.items or JsonSchemaParser.ANY_JSON_OBJECT_SCHEMA
-        return ListParsingState(parsing_state, item_schema, value_schema.minItems, value_schema.maxItems)
+        return ListParsingState(parsing_state, item_schema, value_schema.minItems, value_schema.maxItems, value_schema.prefixItems)
     elif isinstance(value_schema.type, list):
         parsers = [get_parser(parsing_state, JsonSchemaObject(type=schema)) for schema in value_schema.type]
         return UnionParser(parsers)
@@ -629,9 +629,11 @@ class StringParsingState(PrimitiveParsingState):
 
 class ListParsingState(PrimitiveParsingState):
     list_member_type: JsonSchemaObject
+    prefix_item_types: Optional[List[JsonSchemaObject]] = None
     seen_list_opener: bool = False
     seen_list_closer: bool = False
     num_items_seen: int = 0
+    num_items_started: int = 0
 
     def __init__(
         self,
@@ -639,9 +641,11 @@ class ListParsingState(PrimitiveParsingState):
         list_member_type: JsonSchemaObject,
         min_items: Optional[int],
         max_items: Optional[int],
+        prefix_item_types: Optional[List[JsonSchemaObject]] = None,
     ):
         super().__init__(root)
         self.list_member_type = list_member_type
+        self.prefix_item_types = prefix_item_types
         self.min_items = min_items
         self.max_items = max_items
         default_max = root.config.max_json_array_length
@@ -649,18 +653,27 @@ class ListParsingState(PrimitiveParsingState):
             self.max_items = default_max
 
     def _clone(self) -> PrimitiveParsingState:
-        new = ListParsingState(self.root, self.list_member_type, self.min_items, self.max_items)
+        new = ListParsingState(self.root, self.list_member_type, self.min_items, self.max_items, self.prefix_item_types)
         new.parsed_string = self.parsed_string
         new.num_items_seen = self.num_items_seen
+        new.num_items_started = self.num_items_started
         new.seen_list_opener = self.seen_list_opener
         new.seen_list_closer = self.seen_list_closer
         return new
+
+    def _get_item_schema(self, item_index: int) -> JsonSchemaObject:
+        # JSON Schema prefixItems: the item at position item_index is validated against
+        # prefixItems[item_index] when it exists, and against the regular items schema otherwise.
+        if self.prefix_item_types is not None and item_index < len(self.prefix_item_types):
+            return self.prefix_item_types[item_index]
+        return self.list_member_type
 
     def add_character(self, new_character: str) -> "ListParsingState":
         self = cast(ListParsingState, super().add_character(new_character))
         if new_character == "[":
             self.seen_list_opener = True
-            item_parser = get_parser(self.root, self.list_member_type)
+            item_parser = get_parser(self.root, self._get_item_schema(self.num_items_started))
+            self.num_items_started += 1
             requires_items = self.min_items is not None and self.min_items > 0
             if requires_items:
                 parser_to_push = item_parser
@@ -678,13 +691,14 @@ class ListParsingState(PrimitiveParsingState):
         elif new_character == ",":
             if not self.seen_list_closer:
                 self.num_items_seen += 1
-                
+
                 self.root.context.active_parser.object_stack.append(
                     get_parser(
                         self.root,
-                        self.list_member_type,
+                        self._get_item_schema(self.num_items_started),
                     )
                 )
+                self.num_items_started += 1
         return self
 
     def get_allowed_characters(self) -> str:

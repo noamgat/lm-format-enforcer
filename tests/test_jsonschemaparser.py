@@ -639,6 +639,59 @@ def test_arrays_with_multiple_enums():
     _test_json_schema_parsing_with_string('{"array_of_numbers":[6]}', schema, False)
     _test_json_schema_parsing_with_string('{"array_of_numbers":[1, 6]}', schema, False)
 
+def test_prefix_items_from_issue_111():
+    # The exact schema from issue #111: each position has its own type
+    schema = {
+        "type": "array",
+        "prefixItems": [
+            {"const": "FIXED"},
+            {"type": "number"},
+            {"type": "string"},
+        ],
+        "minItems": 3,
+        "maxItems": 3,
+    }
+    _test_json_schema_parsing_with_string('["FIXED", 3245.34, "hello"]', schema, True)
+    _test_json_schema_parsing_with_string('["hello", 13, "World"]', schema, False)
+    _test_json_schema_parsing_with_string('[20020715, 13, 2002]', schema, False)
+    _test_json_schema_parsing_with_string('["FIXED", "not-a-number", "hello"]', schema, False)
+    _test_json_schema_parsing_with_string('["FIXED", 13, 2002]', schema, False)
+
+
+def test_prefix_items_fall_back_to_items_schema():
+    # Positions beyond prefixItems are validated against the items schema
+    schema = {
+        "type": "array",
+        "prefixItems": [
+            {"type": "string"},
+            {"type": "integer"},
+        ],
+        "items": {"type": "boolean"},
+    }
+    _test_json_schema_parsing_with_string('["a", 1, true]', schema, True)
+    _test_json_schema_parsing_with_string('["a", 1, true, false]', schema, True)
+    _test_json_schema_parsing_with_string('["a", 1, "not-a-boolean"]', schema, False)
+    _test_json_schema_parsing_with_string('["a", "not-an-integer", true]', schema, False)
+    _test_json_schema_parsing_with_string('[1, 1, true]', schema, False)
+
+
+def test_prefix_items_without_items_allows_additional_items():
+    # Without an items schema, positions beyond prefixItems are unconstrained
+    schema = {
+        "type": "array",
+        "prefixItems": [
+            {"type": "string"},
+            {"type": "integer"},
+        ],
+    }
+    _test_json_schema_parsing_with_string('["a", 1]', schema, True)
+    _test_json_schema_parsing_with_string('["a", 1, "anything", 42, true]', schema, True)
+    _test_json_schema_parsing_with_string('["a", "not-an-integer"]', schema, False)
+    # prefixItems alone does not require the array to reach its length
+    _test_json_schema_parsing_with_string('["a"]', schema, True)
+    _test_json_schema_parsing_with_string('[]', schema, True)
+
+
 @contextmanager
 def _temp_replace_env_var(env_var_name, temp_value):
     try:
