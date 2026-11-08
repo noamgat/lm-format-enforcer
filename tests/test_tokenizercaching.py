@@ -39,3 +39,32 @@ def test_json_freetext_cache():
     _assert_allowed_tokens(0, test_length + 1, len(token_to_str))
     num_nonquote_tokens = (test_length - 1) * num_letters
     _assert_allowed_tokens(test_length + 1, test_length + 1, num_nonquote_tokens)
+
+
+def test_allowed_token_cache_distinguishes_regex_parsers():
+    # Regression test for https://github.com/noamgat/lm-format-enforcer/issues/193
+    # Two RegexParser instances can reach numerically identical FSM states while
+    # allowing different next characters. The TokenEnforcer allowed-token cache
+    # must key on the regex identity, not just the numeric state.
+    from lmformatenforcer import RegexParser, UnionParser
+    from lmformatenforcer.tokenenforcer import TokenEnforcer, TokenEnforcerTokenizerData
+
+    vocabulary = ['a', 'b', 'x', 'y']
+    data = TokenEnforcerTokenizerData(
+        [(i, text, True) for i, text in enumerate(vocabulary)],
+        lambda ids: ''.join(vocabulary[i] for i in ids),
+        eos_token_id=4,
+        use_bitmask=False,
+        vocab_size=5,
+    )
+    parser = UnionParser([RegexParser('ax'), RegexParser('by')])
+    enforcer = TokenEnforcer(data, parser)
+
+    def allowed(prefix):
+        tokens = enforcer.get_allowed_tokens(prefix)
+        return [text for i, text in enumerate(vocabulary)
+                if tokens.is_token_allowed(i)]
+
+    assert allowed([]) == ['a', 'b']
+    assert allowed([0]) == ['x']  # after 'a', only 'x' continues 'ax'
+    assert allowed([1]) == ['y']  # after 'b', only 'y' continues 'by'
