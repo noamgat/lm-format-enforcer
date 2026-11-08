@@ -69,8 +69,10 @@ class RegexParser(CharacterLevelParser):
         return self.context.state_character_cache[self.current_state]
     
     def cache_key(self) -> Optional[Hashable]:
-        # If we are in the same regex fsm state, the allowed next tokens are the same ones
-        return self.current_state
+        # If we are in the same regex fsm state of the same pattern, the allowed next tokens are the same ones.
+        # Two RegexParsers with different patterns can share a numeric fsm state while allowing different
+        # next characters, so the pattern identity must be part of the cache key.
+        return (id(self.context.pattern), self.current_state)
 
     def _update_alphabet(self, new_alphabet: str):
         if self.context:
