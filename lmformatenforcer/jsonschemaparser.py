@@ -21,7 +21,9 @@ class JsonSchemaParser(CharacterLevelParser):
         # to which parser's stack to add.
         active_parser: "JsonSchemaParser"
         alphabet_without_quotes: str
-        regex_parser_cache: Dict[str, RegexParser] = {}
+
+        def __init__(self):
+            self.regex_parser_cache: Dict[str, RegexParser] = {}
 
     object_stack: List[CharacterLevelParser]
     context: _Context
@@ -60,7 +62,7 @@ class JsonSchemaParser(CharacterLevelParser):
         # This is different from the SequenceParser, in which we need to split (union) into all options.
         receiving_idx = len(self.object_stack) - 1
         last_parsed_string = self.last_parsed_string
-        while receiving_idx >= 0 and new_character not in self.object_stack[receiving_idx].get_allowed_characters():
+        while receiving_idx >= 0 and not self.object_stack[receiving_idx].allows_character(new_character):
             finished_receiver = self.object_stack[receiving_idx]
             if isinstance(finished_receiver, StringParsingState):
                 last_parsed_string = finished_receiver.parsed_string
@@ -134,6 +136,28 @@ class JsonSchemaParser(CharacterLevelParser):
             allowed_characters = "".join(c for c in allowed_characters if c not in WHITESPACE_CHARACTERS)
         return allowed_characters
 
+    def allows_character(self, character: str) -> bool:
+        self.context.active_parser = self
+        if (character in WHITESPACE_CHARACTERS and
+                self.num_consecutive_whitespaces >= self.config.max_consecutive_whitespaces):
+            return False
+        for parser in reversed(self.object_stack):
+            if parser.allows_character(character):
+                return True
+            if not parser.can_end():
+                return False
+        return not self.object_stack and character in WHITESPACE_CHARACTERS
+
+    def has_allowed_in_range(self, lo: int, hi: int) -> bool:
+        self.context.active_parser = self
+        # UTF-8 prefix queries only ask about non-ASCII ranges.
+        for parser in reversed(self.object_stack):
+            if parser.has_allowed_in_range(lo, hi):
+                return True
+            if not parser.can_end():
+                break
+        return False
+
     def can_end(self) -> bool:
         return all(parser.can_end() for parser in self.object_stack)
 
@@ -147,7 +171,7 @@ class JsonSchemaParser(CharacterLevelParser):
                     # so we signal that we are in a "freetext" mode, and reuse the allowed token list throughout the run.
                     cur_len = len(current_parser.parsed_string)
                     min_len = current_parser.min_length or 0
-                    max_len = current_parser.max_length or sys.maxsize
+                    max_len = current_parser.max_length if current_parser.max_length is not None else sys.maxsize
                     assert min_len <= max_len, "Invalid schema for str: min length is larger than max length"
                     if cur_len < max_len:
                         return ('json_freetext', cur_len, min_len, max_len)
@@ -585,7 +609,12 @@ class StringParsingState(PrimitiveParsingState):
             self.root.context.active_parser.object_stack.append(json_escaping_parser)
         return self
 
+    def _sync_regex_config(self):
+        if self.regex_parser and self.regex_parser.config is not self.root.config:
+            self.regex_parser.config = self.root.config
+
     def get_allowed_characters(self) -> str:
+        self._sync_regex_config()
         if not self.seen_opening_quote:
             return '"' + WHITESPACE_CHARACTERS
         if self.seen_closing_quote:
@@ -615,7 +644,36 @@ class StringParsingState(PrimitiveParsingState):
                 return self.root.context.alphabet_without_quotes + BACKSLASH
             if self.max_length is not None and len(self.parsed_string) >= self.max_length:
                 return '"'
-            return self.root.config.alphabet + BACKSLASH
+            return self.root.config.alphabet + BACKSLASH + ('"' if self.root.config.byte_mode else '')
+
+    def allows_character(self, character: str) -> bool:
+        if (self.root.config.byte_mode and self.seen_opening_quote and
+                not self.seen_closing_quote and ord(character) < 0x20):
+            return False
+        if character in self.get_allowed_characters():
+            return True
+        if not self.seen_opening_quote or self.seen_closing_quote:
+            return False
+        if self.regex_parser:
+            return character not in ('"', BACKSLASH) and self.regex_parser.allows_character(character)
+        if self.allowed_strings:
+            return False
+        return (self.root.config.allow_unicode and ord(character) >= 32 and
+                character not in ('"', BACKSLASH) and
+                (self.max_length is None or len(self.parsed_string) < self.max_length))
+
+    def has_allowed_in_range(self, lo: int, hi: int) -> bool:
+        self._sync_regex_config()
+        if not self.seen_opening_quote or self.seen_closing_quote:
+            return super().has_allowed_in_range(lo, hi)
+        if self.regex_parser:
+            return self.regex_parser.has_allowed_in_range(lo, hi)
+        if self.allowed_strings:
+            return super().has_allowed_in_range(lo, hi)
+        if self.max_length is not None and len(self.parsed_string) >= self.max_length:
+            return False
+        return ((self.root.config.allow_unicode and hi >= max(lo, 128)) or
+                super().has_allowed_in_range(lo, hi))
 
     def can_end(self) -> bool:
         if self.require_closing_quote:

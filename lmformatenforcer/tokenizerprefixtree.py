@@ -3,6 +3,7 @@ from typing import Dict, List, Set, Tuple
 import json
 
 from .tokenlist import TokenList
+from .utf8utils import advance_utf8
 
 class TokenizerPrefixTreeNode:
     def __init__(self) -> None:
@@ -26,11 +27,13 @@ class JsonFreetextTokenCache:
             self.first_index_geq_than_length: List[int] = [0]
         
         def build(self, token_strs_to_idx: List[Tuple[str, int]]):
+            self.build_from_lengths([(len(s), token_id) for s, token_id in token_strs_to_idx])
+
+        def build_from_lengths(self, token_lengths_to_idx: List[Tuple[int, int]]):
             # TODO: If this becomes a performance bottleneck, bucket sort instead.
-            token_strs_to_idx = sorted(token_strs_to_idx, key=lambda p:len(p[0]))
-            self.tokens = [pair[1] for pair in token_strs_to_idx]
-            # self.token_strs = [pair[0] for pair in token_strs_to_idx]  # For debugging
-            token_lengths = [len(pair[0]) for pair in token_strs_to_idx]
+            token_lengths_to_idx = sorted(token_lengths_to_idx, key=lambda p: p[0])
+            self.tokens = [pair[1] for pair in token_lengths_to_idx]
+            token_lengths = [pair[0] for pair in token_lengths_to_idx]
             for idx, token_length in enumerate(token_lengths):
                 while len(self.first_index_geq_than_length) <= token_length:
                     self.first_index_geq_than_length.append(idx)
@@ -50,6 +53,7 @@ class JsonFreetextTokenCache:
 
     def __init__(self, use_bitmask: bool, vocab_size: int) -> None:
         self.token_num_to_str: Dict[int, str] = {}
+        self.regular_token_lengths: List[Tuple[int, int]] = []
         self.allowlist_cache: Dict[Tuple[int, int], TokenList] = {}
         self.max_token_len = 0
         self.regular_tokens_length_cache = JsonFreetextTokenCache._StringLengthTokenCache()
@@ -76,6 +80,16 @@ class JsonFreetextTokenCache:
 
         self.token_num_to_str[token_int] = token_str
 
+    def add_token_length(self, length: int, token_int: int):
+        """Cache a non-closing token with an explicit character-length budget.
+
+        Byte tokens ending in an unfinished UTF-8 scalar reserve one character
+        for that scalar, without inventing a character or advancing a parser.
+        """
+        assert not self.allowlist_cache, "Cannot add more tokens after allowlists were precalculated"
+        assert length > 0, "Non-closing tokens must reserve at least one character"
+        self.regular_token_lengths.append((length, token_int))
+
     def lookup_allowed_tokens(self, min_remaining: int, max_len: int) -> TokenList:
         """
         Get the list of tokens that are allowed within a JSON string, such that:
@@ -100,7 +114,7 @@ class JsonFreetextTokenCache:
         based on the tokens that were added with `add_token()`.
         """
         all_tokens: List[Tuple[str, int]] = list((s, n) for n,s in self.token_num_to_str.items())
-        assert all_tokens, "Cannot precalculate allowlists for an empty token list"
+        assert all_tokens or self.regular_token_lengths, "Cannot precalculate allowlists for an empty token list"
         assert not any(pair[0] == '' for pair in all_tokens), "Tokenizer must not contain empty tokens"
 
         regular_tokens: List[Tuple[str, int]] = []
@@ -111,11 +125,13 @@ class JsonFreetextTokenCache:
             else:
                 regular_tokens.append(pair)
 
-        self.regular_tokens_length_cache.build(regular_tokens)
+        self.regular_tokens_length_cache.build_from_lengths(
+            [(len(s), token_id) for s, token_id in regular_tokens] + self.regular_token_lengths)
         self.quote_tokens_length_cache.build(quote_tokens)
         self.max_token_len = max(len(self.regular_tokens_length_cache.first_index_geq_than_length), 
                                  len(self.quote_tokens_length_cache.first_index_geq_than_length))
         del self.token_num_to_str
+        del self.regular_token_lengths
 
 
 class TokenizerPrefixTree:
@@ -138,3 +154,60 @@ class TokenizerPrefixTree:
                 node.children[character] = TokenizerPrefixTreeNode()
             node = node.children[character]
         node.tokens.append(token_idx)
+
+
+class ByteTokenizerPrefixTree:
+    """UTF-8 token trie plus cached simple complete/partial JSON string tokens."""
+    def __init__(self, raw_tokens, use_bitmask, vocab_size):
+        self.root = TokenizerPrefixTreeNode()
+        self.json_exceptions = TokenizerPrefixTreeNode()
+        self.json_freetext_tokens = JsonFreetextTokenCache(use_bitmask, vocab_size)
+        cached = 0
+        for token_id, raw in raw_tokens.items():
+            self._add(raw, token_id, self.root)
+            pending = b''
+            characters = []
+            valid = True
+            for byte in raw:
+                result = advance_utf8(pending, byte)
+                if result is None:
+                    valid = False
+                    break
+                pending, character, _ = result
+                if character is not None:
+                    characters.append(character)
+            # These tokens can still continue a pending scalar via the full
+            # trie, but can never start a strict UTF-8 stream by themselves.
+            if not valid:
+                continue
+            decoded = ''.join(characters)
+            if (pending and '\\' not in decoded and '"' not in decoded and
+                    not any(ord(c) < 0x20 for c in decoded)):
+                self.json_freetext_tokens.add_token_length(len(decoded) + 1, token_id)
+                cached += 1
+                continue
+            simple = (bool(decoded) and '\\' not in decoded and
+                      not pending and
+                      not any(ord(c) < 0x20 for c in decoded) and
+                      '"' not in decoded[:-1])
+            if simple:
+                self.json_freetext_tokens.add_token(decoded, token_id)
+                cached += 1
+            elif raw[0] >= 0x20:
+                # An unescaped leading C0 control is always illegal in this
+                # freetext context. Quotes/escapes and post-quote structure
+                # still require the parser's normal dynamic traversal.
+                self._add(raw, token_id, self.json_exceptions)
+        if cached:
+            self.json_freetext_tokens.freeze()
+        else:
+            self.json_freetext_tokens = None
+
+    @staticmethod
+    def _add(raw, token_id, root):
+        node = root
+        for byte in raw:
+            if byte not in node.children:
+                node.children[byte] = TokenizerPrefixTreeNode()
+            node = node.children[byte]
+        node.tokens.append(token_id)

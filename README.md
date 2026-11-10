@@ -218,3 +218,20 @@ Therefore, to configure the heuristics of a single parser, instantiate a `Charac
 ## Contributers and contributing
 
 See [CONTRIBUTORS.md](https://github.com/noamgat/lm-format-enforcer/blob/main/CONTRIBUTORS.md) for a list of contributers.
+
+### UTF-8 byte-level tokenizers
+
+The Transformers integration automatically enables byte-aware filtering for fast
+native ByteLevel decoders when every regular token has an unambiguous byte mapping,
+the vocabulary contains all 256 single-byte tokens, and no regular added token
+requires separate decoding. Other decoder types or incomplete vocabularies keep the
+previous text-decoding path. This permits a Unicode character to span multiple
+model tokens without treating incomplete UTF-8 bytes as U+FFFD.
+
+Custom integrations may provide `raw_token_bytes` to
+`TokenEnforcerTokenizerData`: a mapping from every regular token ID to its nonempty
+raw bytes, including all 256 single-byte values. Invalid mappings raise
+`ValueError`. In this byte-aware mode, the default parser alphabet permits Unicode
+scalars for free text and regex wildcards. A non-default `config.alphabet` limits
+those cases; explicit enum and regex literals remain available. Existing
+integrations that omit byte metadata retain their previous behavior.

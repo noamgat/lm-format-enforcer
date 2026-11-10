@@ -35,6 +35,10 @@ class CharacterLevelParserConfig:
                                                        DEFAULT_MAX_JSON_ARRAY_LENGTH)
     """What is the maximum json array length if not specified by the schema. Helps the LLM
     avoid infinite loops."""
+    byte_mode: bool = False
+    """Enable byte-aware tokenizer semantics for structural characters."""
+    allow_unicode: bool = False
+    """Permit Unicode scalar values outside alphabet in byte-aware mode."""
 
 
 class CharacterLevelParser(abc.ABC):
@@ -59,6 +63,12 @@ class CharacterLevelParser(abc.ABC):
         """Return True if the parser is in a state where it can end (potentially finished parsing the desired structure), and False otherwise."""
         raise NotImplementedError()
     
+    def allows_character(self, character: str) -> bool:
+        return character in self.get_allowed_characters()
+
+    def has_allowed_in_range(self, lo: int, hi: int) -> bool:
+        return any(lo <= ord(c) <= hi for c in self.get_allowed_characters())
+
     def shortcut_key(self) -> Optional[Hashable]:
         """Optional. Return a key that denotes that this state is a repeating state, full tree traversal should be avoided."""
         return None
@@ -118,7 +128,7 @@ class UnionParser(CharacterLevelParser):
 
     def add_character(self, new_character: str) -> CharacterLevelParser:
         # This is a bit of a performance hit, as it means get_allowed_characters() is called twice.
-        relevant_parsers = [parser for parser in self.parsers if new_character in parser.get_allowed_characters()]
+        relevant_parsers = [parser for parser in self.parsers if parser.allows_character(new_character)]
         next_parsers = [parser.add_character(new_character) for parser in relevant_parsers]
         if len(next_parsers) == 1:
             return next_parsers[0]
@@ -128,6 +138,12 @@ class UnionParser(CharacterLevelParser):
         allowed = "".join([parser.get_allowed_characters() for parser in self.parsers])
         return "".join(set(allowed))
     
+    def allows_character(self, character: str) -> bool:
+        return any(p.allows_character(character) for p in self.parsers)
+
+    def has_allowed_in_range(self, lo: int, hi: int) -> bool:
+        return any(p.has_allowed_in_range(lo, hi) for p in self.parsers)
+
     def can_end(self) -> bool:
         return any([parser.can_end() for parser in self.parsers])
     
@@ -156,7 +172,7 @@ class SequenceParser(CharacterLevelParser):
         # and the second parser can also accept, we don't know which scenario we are dealing
         # with, so we need to return a UnionParser.
         for idx, parser in enumerate(self.parsers):
-            if new_character in parser.get_allowed_characters():
+            if parser.allows_character(new_character):
                 updated_parser = parser.add_character(new_character)
                 next_parsers = [updated_parser] + self.parsers[idx+1:]
                 if len(next_parsers) == 1:
@@ -177,6 +193,22 @@ class SequenceParser(CharacterLevelParser):
                 break
         return "".join(allowed_characters)
     
+    def allows_character(self, character: str) -> bool:
+        for parser in self.parsers:
+            if parser.allows_character(character):
+                return True
+            if not parser.can_end():
+                break
+        return False
+
+    def has_allowed_in_range(self, lo: int, hi: int) -> bool:
+        for parser in self.parsers:
+            if parser.has_allowed_in_range(lo, hi):
+                return True
+            if not parser.can_end():
+                break
+        return False
+
     def can_end(self) -> bool:
         return all([parser.can_end() for parser in self.parsers])
     
