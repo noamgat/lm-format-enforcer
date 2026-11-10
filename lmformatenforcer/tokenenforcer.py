@@ -1,11 +1,13 @@
 from dataclasses import dataclass, field, replace
 import sys
-from typing import Any, Callable, Dict, Hashable, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, Hashable, List, Mapping, Optional, Tuple, Union
 import logging
 
 from .exceptions import LMFormatEnforcerException
-from .characterlevelparser import CharacterLevelParser, ForceStopParser, CharacterLevelParserConfig
-from .tokenizerprefixtree import TokenizerPrefixTree, TokenizerPrefixTreeNode
+from .characterlevelparser import CharacterLevelParser, ForceStopParser, CharacterLevelParserConfig, SequenceParser, UnionParser
+from .tokenizerprefixtree import TokenizerPrefixTree, TokenizerPrefixTreeNode, ByteTokenizerPrefixTree
+from .utf8utils import advance_utf8
+from .consts import COMPLETE_ALPHABET
 from .tokenlist import TokenList
 
 
@@ -17,16 +19,30 @@ class TokenEnforcerTokenizerData:
                  decoder: Callable[[List[int]], str],
                  eos_token_id: Union[int, List[int]],
                  use_bitmask: bool,
-                 vocab_size: int):
+                 vocab_size: int,
+                 raw_token_bytes: Optional[Mapping[int, bytes]] = None):
         """
         Create the tokenizer data that the TokenEnforcer needs. This can be reused for multiple TokenEnforcers if they work with the same tokenizer.
         :param regular_tokens: A list of tuples (token_id, token_string, is_new_word_token) for all the regular (not special) tokens in the tokenizer vocabulary.
         Note that token_string is expected to include leading / trailing whitespaces if relevant.
         :param decoder: A function that decodes a list of token ids into a string.
         :param eos_token_id: The token id(s) of the end-of-string token(s).
+        :param raw_token_bytes: Optional exact byte mapping for every regular token.
+            Must include all 256 single-byte tokens; incomplete metadata is rejected.
+            When omitted, the legacy string-decoding behavior is unchanged.
         """
         filtered_regular_tokens = [token_tuple for token_tuple in regular_tokens if token_tuple[0] <= vocab_size]
         self.regular_tokens = filtered_regular_tokens
+        self.raw_token_bytes = None
+        self.byte_tree = None
+        if raw_token_bytes is not None:
+            ids = {token_id for token_id, _, _ in filtered_regular_tokens}
+            if set(raw_token_bytes) != ids or any(not isinstance(b, bytes) or not b for b in raw_token_bytes.values()):
+                raise ValueError("raw_token_bytes must contain nonempty bytes for every regular token")
+            if {bytes([i]) for i in range(256)} - set(raw_token_bytes.values()):
+                raise ValueError("raw_token_bytes must include every single-byte token")
+            self.raw_token_bytes = dict(raw_token_bytes)
+            self.byte_tree = ByteTokenizerPrefixTree(self.raw_token_bytes, use_bitmask, vocab_size)
         self.tokenizer_tree = TokenizerPrefixTree(self.regular_tokens, use_bitmask, vocab_size)
         self.decoder = decoder
         self.eos_token_id = eos_token_id
@@ -43,6 +59,7 @@ class TokenEnforcer:
         parser: CharacterLevelParser
         allowed_tokens: TokenList | None = field(default=None)
         current_word_tokens: List[int] = field(default_factory=list)
+        pending_utf8: bytes = b''
         
 
     def __init__(self, tokenizer_data: TokenEnforcerTokenizerData, parser: CharacterLevelParser):
@@ -54,6 +71,8 @@ class TokenEnforcer:
         self.prefix_states: Dict[Tuple, TokenEnforcer.OutputTensorState] = {}
         self.root_parser = parser
         self.tokenizer_tree = tokenizer_data.tokenizer_tree
+        self.byte_tree = tokenizer_data.byte_tree
+        self.raw_token_bytes = tokenizer_data.raw_token_bytes
         self.decoder = tokenizer_data.decoder
         self.eos_token_id = tokenizer_data.eos_token_id
         self.regular_tokens = tokenizer_data.regular_tokens
@@ -63,7 +82,15 @@ class TokenEnforcer:
         
         
         # Preserve the parser's existing config (e.g., force_json_field_order) when updating alphabet
-        parser.config = replace(parser.config, alphabet=tokenizer_data.tokenizer_alphabet)
+        if self.byte_tree:
+            def configure(p):
+                p.config = replace(p.config, byte_mode=True, allow_unicode=p.config.alphabet == COMPLETE_ALPHABET)
+                if isinstance(p, (SequenceParser, UnionParser)):
+                    for child in p.parsers:
+                        configure(child)
+            configure(parser)
+        else:
+            parser.config = replace(parser.config, alphabet=tokenizer_data.tokenizer_alphabet)
 
     def get_allowed_tokens(self, token_sequence: List[int]) -> TokenList:
         """
@@ -100,12 +127,17 @@ class TokenEnforcer:
             allowed_tokens: TokenList = TokenList(self.use_bitmask, self.vocab_size)
             
             cache_key = state.parser.cache_key()
+            if cache_key is not None and self.byte_tree:
+                cache_key = (cache_key, state.pending_utf8)
             if cache_key is not None and cache_key in self.allowed_token_cache:
                 state.allowed_tokens = self.allowed_token_cache[cache_key]
                 return
             shortcut_key = state.parser.shortcut_key()
-            self._collect_allowed_tokens(state.parser, self.tokenizer_tree.root, allowed_tokens, shortcut_key)
-            if state.parser.can_end():
+            if self.byte_tree:
+                self._collect_byte_tokens(state.parser, state.pending_utf8, allowed_tokens, shortcut_key)
+            else:
+                self._collect_allowed_tokens(state.parser, self.tokenizer_tree.root, allowed_tokens, shortcut_key)
+            if not state.pending_utf8 and state.parser.can_end():
                 if isinstance(self.eos_token_id, list):
                     allowed_tokens.extend(self.eos_token_id)                    
                 else:
@@ -130,10 +162,47 @@ class TokenEnforcer:
                               "https://github.com/noamgat/lm-format-enforcer/issues with the prefix and "
                               "CharacterLevelParser parameters")
             state.allowed_tokens = TokenList(self.use_bitmask, self.vocab_size)
+            if state.pending_utf8:
+                return
             if isinstance(self.eos_token_id, list):
                 state.allowed_tokens.extend(self.eos_token_id)
             else:
                 state.allowed_tokens.append(self.eos_token_id)
+
+    def _collect_byte_tokens(self, parser, pending, allowed, shortcut_key):
+        tree = self.byte_tree
+        if (not pending and parser.config.allow_unicode and isinstance(shortcut_key, tuple)
+                and shortcut_key[0] == 'json_freetext'):
+            _, cur_len, min_len, max_len = shortcut_key
+            cache = tree.json_freetext_tokens
+            if cache is not None:
+                min_remaining = min(cache.max_token_len, max(0, min_len - cur_len))
+                max_allowed = min(cache.max_token_len, max_len - cur_len)
+                allowed.extend(cache.lookup_allowed_tokens(min_remaining, max_allowed).allowed_tokens)
+            root = tree.json_exceptions
+        else:
+            root = tree.root
+
+        def walk(node, current_parser, partial):
+            allowed.extend(node.tokens)
+            for byte, child in node.children.items():
+                result = advance_utf8(partial, byte)
+                if result is None:
+                    continue
+                next_partial, character, reachable = result
+                if character is not None:
+                    if not current_parser.allows_character(character):
+                        continue
+                    # A leaf needs only acceptance, not the parser state for a
+                    # nonexistent next byte. In particular, constructing the
+                    # JSON escape parser for a lone backslash is expensive.
+                    next_parser = current_parser.add_character(character) if child.children else current_parser
+                else:
+                    if not current_parser.has_allowed_in_range(*reachable):
+                        continue
+                    next_parser = current_parser
+                walk(child, next_parser, next_partial)
+        walk(root, parser, pending)
 
     def _collect_allowed_tokens(self, parser: CharacterLevelParser, tree_node: TokenizerPrefixTreeNode, allowed_tokens: TokenList, shortcut_key: Optional[Hashable]):
         allowed_tokens.extend(tree_node.tokens)
@@ -164,6 +233,25 @@ class TokenEnforcer:
     def _apply_new_characters(self, state: 'TokenEnforcer.OutputTensorState', token_sequence: List[int]):
         new_state = TokenEnforcer.OutputTensorState(parser=state.parser)
         new_token = token_sequence[-1]
+        if self.byte_tree:
+            new_state.pending_utf8 = state.pending_utf8
+            raw = self.raw_token_bytes.get(new_token)
+            if raw is None:
+                new_state.parser = ForceStopParser()
+                return new_state
+            for byte in raw:
+                result = advance_utf8(new_state.pending_utf8, byte)
+                if result is None:
+                    new_state.parser = ForceStopParser()
+                    new_state.pending_utf8 = b''
+                    return new_state
+                new_state.pending_utf8, character, _ = result
+                if character is not None:
+                    if not new_state.parser.allows_character(character):
+                        new_state.parser = ForceStopParser()
+                        return new_state
+                    new_state.parser = new_state.parser.add_character(character)
+            return new_state
         if new_token in self.tokenizer_tree.new_word_tokens:
             new_state.current_word_tokens = [new_token]
             new_characters = self.tokenizer_tree.tokens_to_strs[new_token]

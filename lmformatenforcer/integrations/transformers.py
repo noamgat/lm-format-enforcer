@@ -1,4 +1,5 @@
 import functools
+import json
 from typing import Any, Callable, List, Optional, Tuple, Union
 try:
     from transformers import AutoModelForCausalLM
@@ -76,6 +77,57 @@ def _decode_function(tokenizer: PreTrainedTokenizerBase, tokens: List[int]) -> s
     return cleaned
 
 
+def _bytelevel_token_bytes(tokenizer, regular_tokens):
+    """Extract bytes only for a verified native fast ByteLevel decoder.
+
+    Decoder sequences, added regular tokens and incomplete byte alphabets fall
+    back to the legacy path rather than guessing their decoding semantics.
+    """
+    if not getattr(tokenizer, 'is_fast', False):
+        return None
+    try:
+        backend = tokenizer.backend_tokenizer
+        decoder = json.loads(backend.decoder.__getstate__())
+        if decoder.get('type') != 'ByteLevel':
+            return None
+        regular_ids = {i for i, _, _ in regular_tokens}
+        # Some fast tokenizers (e.g. Llama) have backend special tokens that
+        # are absent from the named special-token map / all_special_ids.
+        # Consult native AddedToken metadata only after verifying the decoder;
+        # an unsupported tokenizer must retain its complete legacy token list.
+        added_tokens = backend.get_added_tokens_decoder()
+        if set(added_tokens) != set(tokenizer.get_added_vocab().values()):
+            return None
+        special_ids = set()
+        for i, token in added_tokens.items():
+            if not isinstance(token.special, bool) or backend.id_to_token(i) != token.content:
+                return None
+            if token.special:
+                special_ids.add(i)
+            elif i in regular_ids:
+                return None
+        regular_ids -= special_ids
+        # GPT-2's reversible bytes-to-Unicode alphabet, used by ByteLevel.
+        bs = list(range(ord('!'), ord('~') + 1)) + list(range(0xa1, 0xad)) + list(range(0xae, 0x100))
+        cs = bs[:]
+        for byte in range(256):
+            if byte not in bs:
+                bs.append(byte)
+                cs.append(256 + len(cs) - (94 + 12 + 82))
+        inverse = dict(zip(map(chr, cs), bs))
+        result = {}
+        for i in regular_ids:
+            token = backend.id_to_token(i)
+            if not token:
+                return None
+            result[i] = bytes(inverse[c] for c in token)
+        if {bytes([i]) for i in range(256)} - set(result.values()):
+            return None
+        return result
+    except (AttributeError, TypeError, ValueError, KeyError, UnicodeError):
+        return None
+
+
 def build_token_enforcer_tokenizer_data(tokenizer: PreTrainedTokenizerBase, 
                                         use_bitmask: bool = False,
                                         vocab_size: Optional[int] = None,
@@ -83,7 +135,11 @@ def build_token_enforcer_tokenizer_data(tokenizer: PreTrainedTokenizerBase,
     vocab_size = vocab_size or len(tokenizer)
     regular_tokens = _build_regular_tokens_list(tokenizer, vocab_size)
     decode_fn = functools.partial(_decode_function, tokenizer)
-    return TokenEnforcerTokenizerData(regular_tokens, decode_fn, tokenizer.eos_token_id, use_bitmask, vocab_size)
+    raw_token_bytes = _bytelevel_token_bytes(tokenizer, regular_tokens)
+    if raw_token_bytes is not None:
+        regular_tokens = [token for token in regular_tokens if token[0] in raw_token_bytes]
+    return TokenEnforcerTokenizerData(regular_tokens, decode_fn, tokenizer.eos_token_id, use_bitmask, vocab_size,
+                                      raw_token_bytes=raw_token_bytes)
 
 
 class TransformersPrefixAllowedTokensFn:
