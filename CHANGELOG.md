@@ -1,5 +1,8 @@
 # LM Format Enforcer Changelog
 
+## Unreleased
+- Preserve escaped literal dollar signs when removing JSON Schema pattern anchors.
+
 ## v0.11.3
 - Minor fixes for vLLM V1 integration
 
