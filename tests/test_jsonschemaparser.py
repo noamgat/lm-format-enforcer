@@ -865,3 +865,14 @@ def test_additional_properties_schema_object():
     _test_json_schema_parsing_with_string('{"a": 1, "b": 2}', schema, True)
     _test_json_schema_parsing_with_string('{"a": "string_value"}', schema, False)
 
+
+@pytest.mark.parametrize("pattern, value", [
+    (r"\$", "$"),
+    (r"^\$$", "$"),
+    (r"price\$", "price$"),
+    (r"^price\$$", "price$"),
+])
+def test_pattern_with_literal_trailing_dollar(pattern, value):
+    schema = {"type": "string", "pattern": pattern}
+    _test_json_schema_parsing_with_string(json.dumps(value), schema, True)
+    _test_json_schema_parsing_with_string(json.dumps(value[:-1]), schema, False)

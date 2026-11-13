@@ -538,7 +538,10 @@ class StringParsingState(PrimitiveParsingState):
         if self.pattern and self.pattern.startswith("^"):
             self.pattern = self.pattern[1:]
         if self.pattern and self.pattern.endswith("$"):
-            self.pattern = self.pattern[:-1]
+            pattern_without_dollar = self.pattern[:-1]
+            num_backslashes = len(pattern_without_dollar) - len(pattern_without_dollar.rstrip(BACKSLASH))
+            if num_backslashes % 2 == 0:
+                self.pattern = pattern_without_dollar
         self.regex_parser = regex_parser
         if self.pattern and not regex_parser:
             if self.pattern not in self.root.context.regex_parser_cache:
